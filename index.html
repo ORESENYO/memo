@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>コード表示 — sheet1 / UserForm</title>
+  <meta name="description" content="指定された文字列（VBAコード）をそのまま表示するページ。コピー機能付き。" />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>コード表示ページ</h1>
+    <p class="lead">以下の文字列をそのまま表示しています（VBAコードの断片）。コピー用ボタンとキーボード操作をサポート。</p>
+  </header>
+
+  <main>
+    <section aria-labelledby="sheet1-heading" class="card">
+      <div class="card-header">
+        <h2 id="sheet1-heading">〓〓〓〓〓sheet1〓〓〓〓〓</h2>
+        <div class="actions">
+          <button class="copy-btn" data-target="code-sheet1" aria-label="sheet1 のコードをコピー">Copy</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <pre><code id="code-sheet1" tabindex="0" aria-label="sheet1 コード">
+' E列をダブルクリックでUserForm2を起動
+Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean)
+If Target.Column = 5 And Target.Row > 1 Then
+Cancel = True
+UserForm2.Show vbModeless
+' TextBにF列の値を出力
+UserForm2.TextB.Value = Me.Cells(Target.Row, 6).Value
+' 行番号を保持
+UserForm2.Tag = Target.Row
+End If
+End Sub
+        </code></pre>
+      </div>
+    </section>
+
+    <section aria-labelledby="userform-heading" class="card">
+      <div class="card-header">
+        <h2 id="userform-heading">〓〓〓〓〓UserForm〓〓〓〓〓</h2>
+        <div class="actions">
+          <button class="copy-btn" data-target="code-userform" aria-label="UserForm のコードをコピー">Copy</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <pre><code id="code-userform" tabindex="0" aria-label="UserForm コード">
+Option Explicit
+Private Sub UserForm_Initialize()
+    Call LoadComboA
+    ' ListA設定：4列（C:D:E＋行番号）
+    With ListA
+        .ColumnCount = 4
+        .ColumnWidths = "100;120;150;0"  ' 4列目は非表示
+    End With
+    Call ExecuteSearch   ' 初期表示（全件）
+End Sub
+
+' ComboAにB列（カテゴリー）のユニークリストを格納
+Private Sub LoadComboA()
+    Dim ws As Worksheet, lastRow As Long, arr, dict As Object, i As Long
+    Set ws = ThisWorkbook.Sheets(1)
+    lastRow = ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
+    arr = ws.Range("B2:B" & lastRow).Value
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    For i = 1 To UBound(arr)
+        If arr(i, 1) <> "" Then dict(arr(i, 1)) = 1
+    Next
+
+    ComboA.List = dict.keys
+End Sub
+
+' ComboAまたはTextAが変化したら検索実行
+Private Sub ComboA_Change(): Call ExecuteSearch: End Sub
+Private Sub TextA_Change(): Call ExecuteSearch: End Sub
+
+' 検索処理（配列一括）
+Private Sub ExecuteSearch()
+    Dim ws As Worksheet, lastRow As Long, arr, results(), words() As String
+    Dim i As Long, cnt As Long, hasWord As Boolean
+    
+    Set ws = ThisWorkbook.Sheets(1)
+    lastRow = ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
+    arr = ws.Range("B2:F" & lastRow).Value  ' B～F列を一括読み込み
+    
+    ListA.Clear: cnt = 0
+    If Trim(TextA.Value) <> "" Then words = Split(Trim(TextA.Value))
+
+    For i = 1 To UBound(arr)
+        ' ComboA一致チェック
+        If ComboA.Value = "" Or arr(i, 1) = ComboA.Value Then
+            ' 複数ワード一致チェック
+            If MatchWords(words, arr, i) Then
+                cnt = cnt + 1
+                ReDim Preserve results(1 To 4, 1 To cnt)
+                results(1, cnt) = arr(i, 2)  ' C列
+                results(2, cnt) = arr(i, 3)  ' D列
+                results(3, cnt) = arr(i, 4)  ' E列
+                results(4, cnt) = i + 1      ' 行番号（シート上は+1補正）
+            End If
+        End If
+    Next
+
+    If cnt > 0 Then ListA.Column = results
+End Sub
+
+' 複数ワード一致判定（B,C,D,F列を対象）
+Private Function MatchWords(words() As String, arr, i As Long) As Boolean
+    Dim w As Variant, tgt As String
+    If Not IsArray(words) Then MatchWords = True: Exit Function
+    For Each w In words
+        If InStr(1, arr(i, 1), w, vbTextCompare) _
+        Or InStr(1, arr(i, 2), w, vbTextCompare) _
+        Or InStr(1, arr(i, 3), w, vbTextCompare) _
+        Or InStr(1, arr(i, 5), w, vbTextCompare) Then
+            ' OK → 次のワード
+        Else
+            MatchWords = False: Exit Function
+        End If
+    Next
+    MatchWords = True
+End Function
+
+' ListAをダブルクリックでF列の値をTextBに出力 & セルを選択
+Private Sub ListA_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+    Dim targetRow As Long, ws As Worksheet
+    If ListA.ListIndex = -1 Then Exit Sub
+    targetRow = CLng(ListA.Column(3, ListA.ListIndex))
+    Set ws = ThisWorkbook.Sheets(1)
+    TextB.Value = ws.Cells(targetRow, 6).Value
+    ws.Activate: ws.Cells(targetRow, 6).Select
+End Sub
+
+' リセットボタン：検索条件をクリアして全件表示
+Private Sub CmdReset_Click()
+    ComboA.Value = "": TextA.Value = "": TextB.Value = ""
+    Call ExecuteSearch
+End Sub
+        </code></pre>
+      </div>
+    </section>
+
+    <aside class="notes" aria-label="補助情報">
+      <h3>注意</h3>
+      <p>上記はページ上に「そのまま表示」するための静的テキストです。ブラウザで実行されるコードではありません。コピーしてVBAエディタ等でご利用ください。</p>
+    </aside>
+  </main>
+
+  <footer>
+    <p>作成日: <!-- 自動で差し替え --> <time id="today"></time></p>
+    <p><small>外部リンクはありません。コピーが必要な場合はボタンを使用してください。</small></p>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
