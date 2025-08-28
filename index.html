@@ -10,19 +10,18 @@
 <body>
   <header>
     <h1>コード表示ページ</h1>
-    <p class="lead">以下の文字列をそのまま表示しています（VBAコードの断片）。コピー用ボタンとキーボード操作をサポート。</p>
   </header>
 
   <main>
     <section aria-labelledby="sheet1-heading" class="card">
       <div class="card-header">
-        <h2 id="sheet1-heading">〓〓〓〓〓sheet1〓〓〓〓〓</h2>
+        <h2 id="sheet1-heading"></h2>
         <div class="actions">
-          <button class="copy-btn" data-target="code-sheet1" aria-label="sheet1 のコードをコピー">Copy</button>
         </div>
       </div>
       <div class="card-body">
         <pre><code id="code-sheet1" tabindex="0" aria-label="sheet1 コード">
+〓〓〓〓〓sheet1〓〓〓〓〓
 ' E列をダブルクリックでUserForm2を起動
 Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean)
 If Target.Column = 5 And Target.Row > 1 Then
@@ -34,19 +33,7 @@ UserForm2.TextB.Value = Me.Cells(Target.Row, 6).Value
 UserForm2.Tag = Target.Row
 End If
 End Sub
-        </code></pre>
-      </div>
-    </section>
-
-    <section aria-labelledby="userform-heading" class="card">
-      <div class="card-header">
-        <h2 id="userform-heading">〓〓〓〓〓UserForm〓〓〓〓〓</h2>
-        <div class="actions">
-          <button class="copy-btn" data-target="code-userform" aria-label="UserForm のコードをコピー">Copy</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <pre><code id="code-userform" tabindex="0" aria-label="UserForm コード">
+〓〓〓〓〓UserForm〓〓〓〓〓
 Option Explicit
 Private Sub UserForm_Initialize()
     Call LoadComboA
@@ -150,8 +137,8 @@ End Sub
   </main>
 
   <footer>
-    <p>作成日: <!-- 自動で差し替え --> <time id="today"></time></p>
-    <p><small>外部リンクはありません。コピーが必要な場合はボタンを使用してください。</small></p>
+    <p><!-- 自動で差し替え --> <time id="today"></time></p>
+    <p><small></small></p>
   </footer>
 
   <script src="script.js" defer></script>
