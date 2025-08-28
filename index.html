@@ -35,96 +35,115 @@ End If
 End Sub
 〓〓〓〓〓UserForm〓〓〓〓〓
 Option Explicit
+
+Private dataArr As Variant
+Private headers As Variant
+
+'--- 初期化処理（UserForm2起動時）
 Private Sub UserForm_Initialize()
-    Call LoadComboA
-    ' ListA設定：4列（C:D:E＋行番号）
-    With ListA
-        .ColumnCount = 4
-        .ColumnWidths = "100;120;150;0"  ' 4列目は非表示
-    End With
-    Call ExecuteSearch   ' 初期表示（全件）
-End Sub
-
-' ComboAにB列（カテゴリー）のユニークリストを格納
-Private Sub LoadComboA()
-    Dim ws As Worksheet, lastRow As Long, arr, dict As Object, i As Long
-    Set ws = ThisWorkbook.Sheets(1)
-    lastRow = ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
-    arr = ws.Range("B2:B" & lastRow).Value
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim dict As Object, i As Long
+    
+    Set ws = ThisWorkbook.Sheets(1) ' 対象シートを指定
+    lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+    If lastRow < 2 Then Exit Sub
+    
+    ' データ全体を配列に格納（2行目以降）
+    dataArr = ws.Range("A2:F" & lastRow).Value
+    
+    ' カテゴリを重複排除してComboAへ
     Set dict = CreateObject("Scripting.Dictionary")
-
-    For i = 1 To UBound(arr)
-        If arr(i, 1) <> "" Then dict(arr(i, 1)) = 1
+    For i = 1 To UBound(dataArr)
+        If Len(dataArr(i, 2)) > 0 Then dict(dataArr(i, 2)) = 1
     Next
-
-    ComboA.List = dict.keys
+    Me.ComboA.List = dict.Keys
+    
+    ' ListAのカラム数設定（C, D列のみ表示）
+    Me.ListA.ColumnCount = 2
+    Me.ListA.ColumnWidths = "100;150"
+    
+    ' 初期表示（全件）
+    FilterList
 End Sub
 
-' ComboAまたはTextAが変化したら検索実行
-Private Sub ComboA_Change(): Call ExecuteSearch: End Sub
-Private Sub TextA_Change(): Call ExecuteSearch: End Sub
+'--- ComboAやTextAの変更でフィルタリング
+Private Sub ComboA_Change()
+    FilterList
+End Sub
 
-' 検索処理（配列一括）
-Private Sub ExecuteSearch()
-    Dim ws As Worksheet, lastRow As Long, arr, results(), words() As String
-    Dim i As Long, cnt As Long, hasWord As Boolean
-    
-    Set ws = ThisWorkbook.Sheets(1)
-    lastRow = ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
-    arr = ws.Range("B2:F" & lastRow).Value  ' B～F列を一括読み込み
-    
-    ListA.Clear: cnt = 0
-    If Trim(TextA.Value) <> "" Then words = Split(Trim(TextA.Value))
+Private Sub TextA_Change()
+    FilterList
+End Sub
 
-    For i = 1 To UBound(arr)
-        ' ComboA一致チェック
-        If ComboA.Value = "" Or arr(i, 1) = ComboA.Value Then
-            ' 複数ワード一致チェック
-            If MatchWords(words, arr, i) Then
-                cnt = cnt + 1
-                ReDim Preserve results(1 To 4, 1 To cnt)
-                results(1, cnt) = arr(i, 2)  ' C列
-                results(2, cnt) = arr(i, 3)  ' D列
-                results(3, cnt) = arr(i, 4)  ' E列
-                results(4, cnt) = i + 1      ' 行番号（シート上は+1補正）
+'--- リストを絞り込み表示
+Private Sub FilterList()
+    Dim i As Long, tmp As Collection, rowArr As Variant
+    Dim words() As String, w As Variant
+    Dim cat As String, txt As String, hit As Boolean
+    
+    cat = Trim(Me.ComboA.Value)
+    txt = Trim(Me.TextA.Value)
+    
+    Set tmp = New Collection
+    
+    If Len(txt) > 0 Then words = Split(txt, " ")
+    
+    For i = 1 To UBound(dataArr)
+        ' カテゴリ一致チェック
+        If (cat = "" Or dataArr(i, 2) = cat) Then
+            hit = True
+            ' テキスト検索
+            If Len(txt) > 0 Then
+                For Each w In words
+                    If InStr(1, dataArr(i, 2) & dataArr(i, 3) & dataArr(i, 4) & dataArr(i, 6), w, vbTextCompare) = 0 Then
+                        hit = False
+                        Exit For
+                    End If
+                Next
+            End If
+            ' 該当データをListAに格納（C列, D列）
+            If hit Then
+                rowArr = Array(dataArr(i, 3), dataArr(i, 4))
+                tmp.Add rowArr
             End If
         End If
     Next
-
-    If cnt > 0 Then ListA.Column = results
+    
+    ' ListAに反映
+    If tmp.Count > 0 Then
+        ReDim rowArr(1 To tmp.Count, 1 To 2)
+        For i = 1 To tmp.Count
+            rowArr(i, 1) = tmp(i)(0)
+            rowArr(i, 2) = tmp(i)(1)
+        Next
+        Me.ListA.List = rowArr
+    Else
+        Me.ListA.Clear
+    End If
 End Sub
 
-' 複数ワード一致判定（B,C,D,F列を対象）
-Private Function MatchWords(words() As String, arr, i As Long) As Boolean
-    Dim w As Variant, tgt As String
-    If Not IsArray(words) Then MatchWords = True: Exit Function
-    For Each w In words
-        If InStr(1, arr(i, 1), w, vbTextCompare) _
-        Or InStr(1, arr(i, 2), w, vbTextCompare) _
-        Or InStr(1, arr(i, 3), w, vbTextCompare) _
-        Or InStr(1, arr(i, 5), w, vbTextCompare) Then
-            ' OK → 次のワード
-        Else
-            MatchWords = False: Exit Function
+'--- ListAをダブルクリックでE列を表示
+Private Sub ListA_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+    Dim i As Long
+    If Me.ListA.ListIndex = -1 Then Exit Sub
+    
+    For i = 1 To UBound(dataArr)
+        If dataArr(i, 3) = Me.ListA.List(Me.ListA.ListIndex, 0) And _
+           dataArr(i, 4) = Me.ListA.List(Me.ListA.ListIndex, 1) Then
+           
+           Me.TextB.Value = dataArr(i, 5) ' E列を表示
+           ThisWorkbook.Sheets(1).Cells(i + 1, 5).Activate
+           Exit For
         End If
     Next
-    MatchWords = True
-End Function
-
-' ListAをダブルクリックでF列の値をTextBに出力 & セルを選択
-Private Sub ListA_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
-    Dim targetRow As Long, ws As Worksheet
-    If ListA.ListIndex = -1 Then Exit Sub
-    targetRow = CLng(ListA.Column(3, ListA.ListIndex))
-    Set ws = ThisWorkbook.Sheets(1)
-    TextB.Value = ws.Cells(targetRow, 6).Value
-    ws.Activate: ws.Cells(targetRow, 6).Select
 End Sub
 
-' リセットボタン：検索条件をクリアして全件表示
-Private Sub CmdReset_Click()
-    ComboA.Value = "": TextA.Value = "": TextB.Value = ""
-    Call ExecuteSearch
+'--- リセットボタン（ComboA, TextAをクリアして全件表示）
+Private Sub cmdReset_Click()
+    Me.ComboA.Value = ""
+    Me.TextA.Value = ""
+    FilterList
 End Sub
         </code></pre>
       </div>
