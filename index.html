@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>Excel検索ビューア</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    select, input, button { margin: 5px; padding: 5px; }
+    .result-item { cursor: pointer; margin: 5px 0; color: blue; text-decoration: underline; }
+    .content { margin: 10px 20px; padding: 10px; border-left: 2px solid #888; display: none; }
+  </style>
+</head>
+<body>
+  <h2>Excel検索ビューア</h2>
+
+  <input type="file" id="inputFile" accept=".xlsx,.xls">
+  <br>
+
+  <label>カテゴリー：</label>
+  <select id="categorySelect">
+    <option value="">すべて</option>
+  </select>
+
+  <label>検索：</label>
+  <input type="text" id="keyword" placeholder="キーワードを入力">
+  <select id="mode">
+    <option value="AND">AND検索</option>
+    <option value="OR">OR検索</option>
+  </select>
+  <button id="searchBtn">検索</button>
+
+  <h3>検索結果</h3>
+  <div id="results"></div>
+
+  <script>
+    let excelData = [];  // {category, category2, subject, body}
+
+    // Excel読み込み
+    document.getElementById('inputFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, {header:1});
+        
+        excelData = [];
+        const categories = new Set();
+        for (let i=1; i<json.length; i++) {
+          let row = json[i];
+          if (!row || row.length < 4) continue;
+          let entry = {
+            category: row[0] || "",
+            category2: row[1] || "",
+            subject: row[2] || "",
+            body: row[3] || ""
+          };
+          excelData.push(entry);
+          if (entry.category) categories.add(entry.category);
+        }
+        // プルダウン生成
+        const select = document.getElementById("categorySelect");
+        select.innerHTML = '<option value="">すべて</option>';
+        categories.forEach(c => {
+          const opt = document.createElement("option");
+          opt.value = c;
+          opt.textContent = c;
+          select.appendChild(opt);
+        });
+        alert("Excelデータを読み込みました");
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // 検索処理
+    document.getElementById("searchBtn").addEventListener("click", function() {
+      const cat = document.getElementById("categorySelect").value;
+      const keyword = document.getElementById("keyword").value.trim();
+      const mode = document.getElementById("mode").value;
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "";
+
+      let keywords = keyword ? keyword.split(/\s+/) : [];
+
+      let filtered = excelData.filter(item => {
+        if (cat && item.category !== cat) return false;
+
+        if (keywords.length === 0) return true;
+
+        let text = (item.category2 + " " + item.subject + " " + item.body).toLowerCase();
+        if (mode === "AND") {
+          return keywords.every(k => text.includes(k.toLowerCase()));
+        } else {
+          return keywords.some(k => text.includes(k.toLowerCase()));
+        }
+      });
+
+      if (filtered.length === 0) {
+        resultsDiv.textContent = "該当なし";
+        return;
+      }
+
+      filtered.forEach(item => {
+        let div = document.createElement("div");
+        div.className = "result-item";
+        div.textContent = item.subject;
+
+        let content = document.createElement("div");
+        content.className = "content";
+        content.textContent = item.body;
+
+        div.addEventListener("click", () => {
+          content.style.display = (content.style.display === "none" ? "block" : "none");
+        });
+
+        resultsDiv.appendChild(div);
+        resultsDiv.appendChild(content);
+      });
+    });
+  </script>
+</body>
+</html>
