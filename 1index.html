@@ -21,211 +21,253 @@
       </div>
       <div class="card-body">
         <pre><code id="code-sheet1" tabindex="0" aria-label="sheet1 コード">
-〓〓〓〓〓Sheet1〓〓〓〓〓
+〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>リアルタイム検索ビューア</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: sans-serif; margin: 0; padding: 20px; }
+  h2, h3 { margin: 10px 0; }
+  input, select { margin: 5px; padding: 5px; font-size: 1em; }
+  #results { margin-top: 15px; }
+  .result-item { cursor: pointer; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
+  .result-item:hover { background-color: #f0f0f0; }
 
-Option Explicit
+  #modalOverlay {
+    display: none;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); z-index: 999;
+    justify-content: center; align-items: center;
+  }
+  #modalContent {
+    background: white; padding: 20px; border-radius: 8px;
+    max-width: 90%; max-height: 80%; overflow-y: auto; 
+    box-sizing: border-box;
+  }
+  #modalContent h3 { margin-top: 0; word-break: break-word; }
+  #modalContent p { white-space: pre-wrap; word-break: break-word; }
+</style>
+</head>
+<body>
 
-' === D列セルをダブルクリックで UserForm2 を開く（モデルレス） ===
-Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean)
-If Not Intersect(Target, Me.Columns("D")) Is Nothing Then
-If Target.Row >= 2 Then ' 1行目はヘッダー想定
-Cancel = True
+<h2>リアルタイム検索ビューア</h2>
 
-' 既に開いていなければモデルレスで表示
-If Not IsUserFormLoaded("UserForm2") Then
-UserForm2.Show vbModeless
-End If
+<label>カテゴリー：</label>
+<select id="categorySelect">
+  <option value="">すべて</option>
+</select>
 
-' 選択行の E列を TextB に反映
-UserForm2.TextB.Value = Me.Cells(Target.Row, "E").Value
-End If
-End If
-End Sub
+<label>検索：</label>
+<input type="text" id="keyword" placeholder="キーワードを入力">
+<select id="mode">
+  <option value="AND">AND検索</option>
+  <option value="OR">OR検索</option>
+</select>
 
-' === セル更新を UserForm 側に即時反映 ===
-Private Sub Worksheet_Change(ByVal Target As Range)
-Dim rng As Range
-Set rng = Intersect(Target, Me.Range("B:E"))
-If rng Is Nothing Then Exit Sub
-If IsUserFormLoaded("UserForm2") Then
-UserForm2.RefreshData
-End If
-End Sub
+<h3>検索結果</h3>
+<div id="results"></div>
 
-' === UserForm が開いているか確認する関数 ===
-Private Function IsUserFormLoaded(ByVal UFName As String) As Boolean
-Dim uf As Object
-For Each uf In VBA.UserForms
-If uf.Name = UFName Then
-IsUserFormLoaded = True
-Exit Function
-End If
-Next uf
-End Function
+<div id="modalOverlay">
+  <div id="modalContent">
+    <h3 id="modalTitle"></h3>
+    <p id="modalBody"></p>
+  </div>
+</div>
 
-〓〓〓〓〓UserForm2〓〓〓〓〓
+<script>
+document.addEventListener("DOMContentLoaded", function() {
 
-Option Explicit
+const excelData = [{category: "カテゴリ1",category2: "サブ1",subject: "件名1",body: `
+本文行1
+本文行2
+本文行3
+本文行4
+本文行5
+本文行6
+本文行7
+本文行8
+本文行9
+本文行10
+本文行11
+本文行12
+本文行13
+本文行14
+本文行15
+本文行16
+本文行17
+本文行18
+本文行19
+本文行20
+本文行21
+本文行22
+本文行23
+本文行24
+本文行25
+本文行26
+本文行27
+本文行28
+本文行29
+本文行30
+本文行31
+本文行32
+本文行33
+本文行34
+本文行35
+本文行36
+本文行37
+本文行38
+本文行39
+本文行40
+本文行41
+本文行42
+本文行43
+本文行44
+本文行45
+本文行46
+本文行47
+本文行48
+本文行49
+本文行50
 
-' === UserForm2 内に追加 ===
-Public Sub RefreshData()
-' 既存の検索処理を呼び出す
-SearchAndDisplay
-End Sub
+`},{category: "カテゴリ2",category2: "サブ2",subject: "件名2",body: `
+本文A1
+本文A2
+本文A3
+本文A4
+本文A5
+本文A6
+本文A7
+本文A8
+本文A9
 
-' === UserForm 初期化 ===
-Private Sub UserForm_Initialize()
-With ListA
-.Clear
-.ColumnCount = 2
-.ColumnWidths = "250;0"   ' 1列目表示幅 250pt, 2列目(行番号)幅 0 => 非表示
-End With
+`},{category: "カテゴリ2",category2: "サブ2",subject: "件名2",body: `
+本文A10
+本文A11
+本文A12
+本文A13
+本文A14
+本文A15
+本文A16
+本文A17
 
-LoadComboA
-End Sub
+`},{category: "カテゴリ2",category2: "サブ2",subject: "件名2",body: `
+本文A18
+本文A19
+本文A20
+本文A21
+本文A22
+本文A23
+本文A24
+本文A25
+本文A26
+本文A27
+本文A28
 
-' === ComboA に B列（2行目以降）の重複・空白除外値を読み込む ===
-Private Sub LoadComboA()
-Dim ws As Worksheet
-Dim lastRow As Long
-Dim arr As Variant
-Dim col As Collection
-Dim i As Long
-Dim val As String
+`},{category: "カテゴリ2",category2: "サブ2",subject: "件名2",body:`
+本文A29
+本文A30
+本文A31
+本文A32
+本文A33
+本文A34
+本文A35
+本文A36
+本文A37
+本文A38
+本文A39
+本文A40
+本文A41
+本文A42
+本文A43
+本文A44
+本文A45
+本文A46
+本文A47
+本文A48
+本文A49
+本文A50
 
-On Error GoTo ErrHandler
+`},{category: "カテゴリ1",category2: "サブ3",subject: "件名3",body:`
+本文B1
+本文B2
+本文B3
+`}];
 
-Set ws = ThisWorkbook.Sheets(1) ' 必要ならシート名に変更
-lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
-If lastRow < 2 Then Exit Sub
+  const modalOverlay = document.getElementById("modalOverlay");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalBody = document.getElementById("modalBody");
 
-arr = ws.Range("B2:B" & lastRow).Value ' 配列に格納して高速化
-Set col = New Collection
+  function showModal(title, body) {
+    modalTitle.textContent = title;
+    modalBody.textContent = body;
+    modalOverlay.style.display = "flex";
+  }
 
-On Error Resume Next
-For i = 1 To UBound(arr, 1)
-val = Trim(CStr(arr(i, 1)))
-If val <> "" Then col.Add val, CStr(val) ' 重複は自動でスキップ
-Next i
-On Error GoTo 0
+  function closeModal() {
+    modalOverlay.style.display = "none";
+  }
 
-ComboA.Clear
-For i = 1 To col.Count
-ComboA.AddItem col(i)
-Next i
+  modalOverlay.addEventListener("click", function(e) {
+    if(e.target === modalOverlay) closeModal();
+  });
 
-Exit Sub
-ErrHandler:
-MsgBox "コンボの読み込みでエラーが発生しました。" & vbCrLf & Err.Description, vbExclamation
-End Sub
+  function performSearch() {
+    const cat = document.getElementById("categorySelect").value.trim();
+    const keyword = document.getElementById("keyword").value.trim();
+    const mode = document.getElementById("mode").value;
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
 
-' === コンボ／テキストの変更でリアルタイム検索実行 ===
-Private Sub ComboA_Change(): SearchAndDisplay: End Sub
-Private Sub TextA_Change(): SearchAndDisplay: End Sub
+    let keywords = keyword ? keyword.split(/\s+/) : [];
 
-' === 検索本体 ===
-Private Sub SearchAndDisplay()
-Dim ws As Worksheet
-Dim lastRow As Long
-Dim arr As Variant
-Dim i As Long, j As Long
-Dim keyWords() As String
-Dim hit As Boolean
-Dim cat As String
-Dim searchText As String
-Dim kw As String
-Dim valC As String, valD As String, valE As String
+    const filtered = excelData.filter(item => {
+      if (cat && item.category.trim() !== cat) return false;
+      if (keywords.length === 0) return true;
+      const text = (item.category2 + " " + item.subject + " " + item.body).toLowerCase();
+      if (mode === "AND") return keywords.every(k => text.includes(k.toLowerCase()));
+      else return keywords.some(k => text.includes(k.toLowerCase()));
+    });
 
-On Error GoTo ErrHandler
+    if (filtered.length === 0) {
+      resultsDiv.textContent = "該当なし";
+      return;
+    }
 
-Set ws = ThisWorkbook.Sheets(1)
-lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
-If lastRow < 2 Then
-ListA.Clear
-Exit Sub
-End If
+    filtered.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "result-item";
+      div.textContent = `カテゴリー: ${item.category} | カテゴリー2: ${item.category2} | 件名: ${item.subject}`;
+      div.addEventListener("click", () => {
+        showModal(item.subject, item.body);
+      });
+      resultsDiv.appendChild(div);
+    });
+  }
 
-' C～E列を一括で配列取得
-arr = ws.Range("B2:E" & lastRow).Value
+  const categories = new Set(excelData.map(item => item.category));
+  const select = document.getElementById("categorySelect");
+  categories.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    select.appendChild(opt);
+  });
 
-ListA.Clear
+  document.getElementById("keyword").addEventListener("input", performSearch);
+  document.getElementById("categorySelect").addEventListener("change", performSearch);
+  document.getElementById("mode").addEventListener("change", performSearch);
 
-cat = Trim$(ComboA.Value)
-searchText = Trim$(TextA.Value)
+  performSearch();
+});
+</script>
 
-If searchText <> "" Then
-searchText = Replace(searchText, " ", "　") ' 半角→全角
-keyWords = Split(searchText, "　")
-End If
+</body>
+</html>
+〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
 
-For i = 1 To UBound(arr, 1)
-hit = True
-
-' カテゴリーフィルタ（B列）
-If cat <> "" Then
-If CStr(arr(i, 1)) <> cat Then hit = False
-End If
-
-' 複数ワード検索（C,D,E列のいずれかに含まれること）
-If hit And searchText <> "" Then
-valC = CStr(arr(i, 2))
-valD = CStr(arr(i, 3))
-valE = CStr(arr(i, 4))
-
-For j = LBound(keyWords) To UBound(keyWords)
-kw = Trim$(keyWords(j))
-If kw <> "" Then
-If InStr(1, valC, kw, vbTextCompare) = 0 _
-   And InStr(1, valD, kw, vbTextCompare) = 0 _
-   And InStr(1, valE, kw, vbTextCompare) = 0 Then
-hit = False
-Exit For
-End If
-End If
-Next j
-End If
-
-' ヒットしたら ListA に表示
-If hit Then
-ListA.AddItem arr(i, 2) & "┃" & arr(i, 3)
-ListA.List(ListA.ListCount - 1, 1) = CStr(i + 1) ' 行番号 (2行目が配列1番目なので+1)
-End If
-Next i
-
-Exit Sub
-ErrHandler:
-MsgBox "検索処理でエラーが発生しました。" & vbCrLf & Err.Description, vbExclamation
-End Sub
-
-' === ListA ダブルクリック：選択行の E列を TextB に表示し、該当セルをアクティブにする ===
-Private Sub ListA_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
-Dim ws As Worksheet
-Dim rowNum As Long
-
-If ListA.ListIndex = -1 Then Exit Sub
-
-On Error GoTo ErrHandler
-Set ws = ThisWorkbook.Sheets(1)
-
-rowNum = CLng(ListA.List(ListA.ListIndex, 1))
-If rowNum < 2 Or rowNum > ws.Rows.Count Then Exit Sub
-
-TextB.Value = ws.Cells(rowNum, "E").Value
-ws.Activate
-ws.Cells(rowNum, "E").Activate
-Exit Sub
-
-ErrHandler:
-MsgBox "リスト選択処理でエラーが発生しました。" & vbCrLf & Err.Description, vbExclamation
-End Sub
-
-' === ButtonA で全コントロールをクリア ===
-Private Sub ButtonA_Click()
-ComboA.Value = ""
-TextA.Value = ""
-ListA.Clear
-TextB.Value = ""
-End Sub
         </code></pre>
       </div>
     </section>
