@@ -1,5 +1,22 @@
-<input type="file" id="inputFile" accept=".xlsx,.xls,.xlsm">
-<br>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Excelリアルタイム検索ビューア</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  select, input { margin: 5px; padding: 5px; }
+  .result-item { cursor: pointer; margin: 5px 0; color: blue; text-decoration: underline; }
+  .content { margin: 5px 20px; padding: 10px; border-left: 2px solid #888; display: none; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+
+<h2>Excelリアルタイム検索ビューア</h2>
+
+<input type="file" id="inputFile" accept=".xlsx,.xls,.xlsm"><br>
 
 <label>カテゴリー：</label>
 <select id="categorySelect">
@@ -17,6 +34,7 @@
 <div id="results"></div>
 
 <script>
+document.addEventListener("DOMContentLoaded", function() {
   let excelData = [];
 
   function performSearch() {
@@ -28,17 +46,12 @@
 
     let keywords = keyword ? keyword.split(/\s+/) : [];
 
-    let filtered = excelData.filter(item => {
+    const filtered = excelData.filter(item => {
       if (cat && item.category !== cat) return false;
-
       if (keywords.length === 0) return true;
-
-      let text = (item.category2 + " " + item.subject + " " + item.body).toLowerCase();
-      if (mode === "AND") {
-        return keywords.every(k => text.includes(k.toLowerCase()));
-      } else {
-        return keywords.some(k => text.includes(k.toLowerCase()));
-      }
+      const text = (item.category2 + " " + item.subject + " " + item.body).toLowerCase();
+      if (mode === "AND") return keywords.every(k => text.includes(k.toLowerCase()));
+      else return keywords.some(k => text.includes(k.toLowerCase()));
     });
 
     if (filtered.length === 0) {
@@ -47,16 +60,16 @@
     }
 
     filtered.forEach(item => {
-      let div = document.createElement("div");
+      const div = document.createElement("div");
       div.className = "result-item";
       div.textContent = item.subject;
 
-      let content = document.createElement("div");
+      const content = document.createElement("div");
       content.className = "content";
       content.textContent = item.body;
 
       div.addEventListener("click", () => {
-        content.style.display = (content.style.display === "none" ? "block" : "none");
+        content.style.display = content.style.display === "none" ? "block" : "none";
       });
 
       resultsDiv.appendChild(div);
@@ -64,43 +77,53 @@
     });
   }
 
-  // Excel読み込み
   document.getElementById('inputFile').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = function(e) {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, {type: 'array'});
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(sheet, {header:1});
+    reader.onload = function(evt) {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, {header:1});
 
-      excelData = [];
-      const categories = new Set();
-      for (let i=1; i<json.length; i++) {
-        let row = json[i];
-        if (!row || row.length < 4) continue;
-        let entry = {
-          category: row[0] || "",
-          category2: row[1] || "",
-          subject: row[2] || "",
-          body: row[3] || ""
-        };
-        excelData.push(entry);
-        if (entry.category) categories.add(entry.category);
+        excelData = [];
+        const categories = new Set();
+
+        for (let i = 1; i < json.length; i++) {
+          const row = json[i] || [];
+          const entry = {
+            category: row[0] || "",
+            category2: row[1] || "",
+            subject: row[2] || "",
+            body: row[3] || ""
+          };
+          excelData.push(entry);
+          if (entry.category) categories.add(entry.category);
+        }
+
+        // プルダウン更新
+        const select = document.getElementById("categorySelect");
+        select.innerHTML = '<option value="">すべて</option>';
+        categories.forEach(c => {
+          const opt = document.createElement("option");
+          opt.value = c;
+          opt.textContent = c;
+          select.appendChild(opt);
+        });
+
+        alert("Excelデータを読み込みました");
+        performSearch();
+      } catch (err) {
+        console.error("Excel読み込みエラー", err);
+        alert("Excelファイルの読み込みに失敗しました");
       }
-
-      const select = document.getElementById("categorySelect");
-      select.innerHTML = '<option value="">すべて</option>';
-      categories.forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c;
-        opt.textContent = c;
-        select.appendChild(opt);
-      });
-
-      alert("Excelデータを読み込みました");
-      performSearch(); // 読み込み直後にも表示
+    };
+    reader.onerror = function(err) {
+      console.error("FileReaderエラー", err);
+      alert("ファイル読み込み中にエラーが発生しました");
     };
     reader.readAsArrayBuffer(file);
   });
@@ -109,4 +132,8 @@
   document.getElementById("keyword").addEventListener("input", performSearch);
   document.getElementById("categorySelect").addEventListener("change", performSearch);
   document.getElementById("mode").addEventListener("change", performSearch);
+
+});
 </script>
+</body>
+</html>
