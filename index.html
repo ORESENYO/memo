@@ -21,129 +21,210 @@
       </div>
       <div class="card-body">
         <pre><code id="code-sheet1" tabindex="0" aria-label="sheet1 コード">
-〓〓〓〓〓sheet1〓〓〓〓〓
-' E列をダブルクリックでUserForm2を起動
-Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean)
-If Target.Column = 5 And Target.Row > 1 Then
-Cancel = True
-UserForm2.Show vbModeless
-' TextBにF列の値を出力
-UserForm2.TextB.Value = Me.Cells(Target.Row, 6).Value
-' 行番号を保持
-UserForm2.Tag = Target.Row
-End If
-End Sub
-〓〓〓〓〓UserForm〓〓〓〓〓
+〓〓〓〓〓Sheet1〓〓〓〓〓
+
 Option Explicit
 
-Private dataArr As Variant
-Private headers As Variant
+' === D列セルをダブルクリックで UserForm1 を開く（モデルレス） ===
+Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean)
+If Not Intersect(Target, Me.Columns("D")) Is Nothing Then
+If Target.Row >= 2 Then ' 1行目はヘッダー想定
+Cancel = True
 
-'--- 初期化処理（UserForm2起動時）
+' 既に開いていなければモデルレスで表示
+If Not IsUserFormLoaded("UserForm1") Then
+UserForm1.Show vbModeless
+End If
+
+' 選択行の E列を TextB に反映
+UserForm1.TextB.Value = Me.Cells(Target.Row, "E").Value
+End If
+End If
+End Sub
+
+' === セル更新を UserForm 側に即時反映 ===
+Private Sub Worksheet_Change(ByVal Target As Range)
+Dim rng As Range
+Set rng = Intersect(Target, Me.Range("B:E"))
+If rng Is Nothing Then Exit Sub
+If IsUserFormLoaded("UserForm1") Then
+UserForm1.RefreshData
+End If
+End Sub
+
+' === UserForm が開いているか確認する関数 ===
+Private Function IsUserFormLoaded(ByVal UFName As String) As Boolean
+Dim uf As Object
+For Each uf In VBA.UserForms
+If uf.Name = UFName Then
+IsUserFormLoaded = True
+Exit Function
+End If
+Next uf
+End Function
+
+〓〓〓〓〓UserForm2〓〓〓〓〓
+
+Option Explicit
+
+' === UserForm1 内に追加 ===
+Public Sub RefreshData()
+' 既存の検索処理を呼び出す
+SearchAndDisplay
+End Sub
+
+' === UserForm 初期化 ===
 Private Sub UserForm_Initialize()
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim dict As Object, i As Long
-    
-    Set ws = ThisWorkbook.Sheets(1) ' 対象シートを指定
-    lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
-    If lastRow < 2 Then Exit Sub
-    
-    ' データ全体を配列に格納（2行目以降）
-    dataArr = ws.Range("A2:F" & lastRow).Value
-    
-    ' カテゴリを重複排除してComboAへ
-    Set dict = CreateObject("Scripting.Dictionary")
-    For i = 1 To UBound(dataArr)
-        If Len(dataArr(i, 2)) > 0 Then dict(dataArr(i, 2)) = 1
-    Next
-    Me.ComboA.List = dict.Keys
-    
-    ' ListAのカラム数設定（C, D列のみ表示）
-    Me.ListA.ColumnCount = 2
-    Me.ListA.ColumnWidths = "100;150"
-    
-    ' 初期表示（全件）
-    FilterList
+With ListA
+.Clear
+.ColumnCount = 2
+.ColumnWidths = "250;0"   ' 1列目表示幅 250pt, 2列目(行番号)幅 0 => 非表示
+End With
+
+LoadComboA
 End Sub
 
-'--- ComboAやTextAの変更でフィルタリング
-Private Sub ComboA_Change()
-    FilterList
+' === ComboA に B列（2行目以降）の重複・空白除外値を読み込む ===
+Private Sub LoadComboA()
+Dim ws As Worksheet
+Dim lastRow As Long
+Dim arr As Variant
+Dim col As Collection
+Dim i As Long
+Dim val As String
+
+On Error GoTo ErrHandler
+
+Set ws = ThisWorkbook.Sheets(1) ' 必要ならシート名に変更
+lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+If lastRow < 2 Then Exit Sub
+
+arr = ws.Range("B2:B" & lastRow).Value ' 配列に格納して高速化
+Set col = New Collection
+
+On Error Resume Next
+For i = 1 To UBound(arr, 1)
+val = Trim(CStr(arr(i, 1)))
+If val <> "" Then col.Add val, CStr(val) ' 重複は自動でスキップ
+Next i
+On Error GoTo 0
+
+ComboA.Clear
+For i = 1 To col.Count
+ComboA.AddItem col(i)
+Next i
+
+Exit Sub
+ErrHandler:
+MsgBox "コンボの読み込みでエラーが発生しました。" & vbCrLf & Err.Description, vbExclamation
 End Sub
 
-Private Sub TextA_Change()
-    FilterList
+' === コンボ／テキストの変更でリアルタイム検索実行 ===
+Private Sub ComboA_Change(): SearchAndDisplay: End Sub
+Private Sub TextA_Change(): SearchAndDisplay: End Sub
+
+' === 検索本体 ===
+Private Sub SearchAndDisplay()
+Dim ws As Worksheet
+Dim lastRow As Long
+Dim arr As Variant
+Dim i As Long, j As Long
+Dim keyWords() As String
+Dim hit As Boolean
+Dim cat As String
+Dim searchText As String
+Dim kw As String
+Dim valC As String, valD As String, valE As String
+
+On Error GoTo ErrHandler
+
+Set ws = ThisWorkbook.Sheets(1)
+lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
+If lastRow < 2 Then
+ListA.Clear
+Exit Sub
+End If
+
+' C～E列を一括で配列取得
+arr = ws.Range("B2:E" & lastRow).Value
+
+ListA.Clear
+
+cat = Trim$(ComboA.Value)
+searchText = Trim$(TextA.Value)
+
+If searchText <> "" Then
+searchText = Replace(searchText, " ", "　") ' 半角→全角
+keyWords = Split(searchText, "　")
+End If
+
+For i = 1 To UBound(arr, 1)
+hit = True
+
+' カテゴリーフィルタ（B列）
+If cat <> "" Then
+If CStr(arr(i, 1)) <> cat Then hit = False
+End If
+
+' 複数ワード検索（C,D,E列のいずれかに含まれること）
+If hit And searchText <> "" Then
+valC = CStr(arr(i, 2))
+valD = CStr(arr(i, 3))
+valE = CStr(arr(i, 4))
+
+For j = LBound(keyWords) To UBound(keyWords)
+kw = Trim$(keyWords(j))
+If kw <> "" Then
+If InStr(1, valC, kw, vbTextCompare) = 0 _
+   And InStr(1, valD, kw, vbTextCompare) = 0 _
+   And InStr(1, valE, kw, vbTextCompare) = 0 Then
+hit = False
+Exit For
+End If
+End If
+Next j
+End If
+
+' ヒットしたら ListA に表示
+If hit Then
+ListA.AddItem arr(i, 2) & "┃" & arr(i, 3)
+ListA.List(ListA.ListCount - 1, 1) = CStr(i + 1) ' 行番号 (2行目が配列1番目なので+1)
+End If
+Next i
+
+Exit Sub
+ErrHandler:
+MsgBox "検索処理でエラーが発生しました。" & vbCrLf & Err.Description, vbExclamation
 End Sub
 
-'--- リストを絞り込み表示
-Private Sub FilterList()
-    Dim i As Long, tmp As Collection, rowArr As Variant
-    Dim words() As String, w As Variant
-    Dim cat As String, txt As String, hit As Boolean
-    
-    cat = Trim(Me.ComboA.Value)
-    txt = Trim(Me.TextA.Value)
-    
-    Set tmp = New Collection
-    
-    If Len(txt) > 0 Then words = Split(txt, " ")
-    
-    For i = 1 To UBound(dataArr)
-        ' カテゴリ一致チェック
-        If (cat = "" Or dataArr(i, 2) = cat) Then
-            hit = True
-            ' テキスト検索
-            If Len(txt) > 0 Then
-                For Each w In words
-                    If InStr(1, dataArr(i, 2) & dataArr(i, 3) & dataArr(i, 4) & dataArr(i, 6), w, vbTextCompare) = 0 Then
-                        hit = False
-                        Exit For
-                    End If
-                Next
-            End If
-            ' 該当データをListAに格納（C列, D列）
-            If hit Then
-                rowArr = Array(dataArr(i, 3), dataArr(i, 4))
-                tmp.Add rowArr
-            End If
-        End If
-    Next
-    
-    ' ListAに反映
-    If tmp.Count > 0 Then
-        ReDim rowArr(1 To tmp.Count, 1 To 2)
-        For i = 1 To tmp.Count
-            rowArr(i, 1) = tmp(i)(0)
-            rowArr(i, 2) = tmp(i)(1)
-        Next
-        Me.ListA.List = rowArr
-    Else
-        Me.ListA.Clear
-    End If
-End Sub
-
-'--- ListAをダブルクリックでE列を表示
+' === ListA ダブルクリック：選択行の E列を TextB に表示し、該当セルをアクティブにする ===
 Private Sub ListA_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
-    Dim i As Long
-    If Me.ListA.ListIndex = -1 Then Exit Sub
-    
-    For i = 1 To UBound(dataArr)
-        If dataArr(i, 3) = Me.ListA.List(Me.ListA.ListIndex, 0) And _
-           dataArr(i, 4) = Me.ListA.List(Me.ListA.ListIndex, 1) Then
-           
-           Me.TextB.Value = dataArr(i, 5) ' E列を表示
-           ThisWorkbook.Sheets(1).Cells(i + 1, 5).Activate
-           Exit For
-        End If
-    Next
+Dim ws As Worksheet
+Dim rowNum As Long
+
+If ListA.ListIndex = -1 Then Exit Sub
+
+On Error GoTo ErrHandler
+Set ws = ThisWorkbook.Sheets(1)
+
+rowNum = CLng(ListA.List(ListA.ListIndex, 1))
+If rowNum < 2 Or rowNum > ws.Rows.Count Then Exit Sub
+
+TextB.Value = ws.Cells(rowNum, "E").Value
+ws.Activate
+ws.Cells(rowNum, "E").Activate
+Exit Sub
+
+ErrHandler:
+MsgBox "リスト選択処理でエラーが発生しました。" & vbCrLf & Err.Description, vbExclamation
 End Sub
 
-'--- リセットボタン（ComboA, TextAをクリアして全件表示）
-Private Sub cmdReset_Click()
-    Me.ComboA.Value = ""
-    Me.TextA.Value = ""
-    FilterList
+' === ButtonA で全コントロールをクリア ===
+Private Sub ButtonA_Click()
+ComboA.Value = ""
+TextA.Value = ""
+ListA.Clear
+TextB.Value = ""
 End Sub
         </code></pre>
       </div>
