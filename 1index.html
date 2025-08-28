@@ -1,27 +1,3 @@
-<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>コード表示 — sheet1 / UserForm</title>
-  <meta name="description" content="指定された文字列（VBAコード）をそのまま表示するページ。コピー機能付き。" />
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <header>
-    <h1>コード表示ページ</h1>
-  </header>
-
-  <main>
-    <section aria-labelledby="sheet1-heading" class="card">
-      <div class="card-header">
-        <h2 id="sheet1-heading"></h2>
-        <div class="actions">
-        </div>
-      </div>
-      <div class="card-body">
-        <pre><code id="code-sheet1" tabindex="0" aria-label="sheet1 コード">
-〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -29,26 +5,26 @@
 <title>リアルタイム検索ビューア</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body { font-family: sans-serif; margin: 0; padding: 20px; }
-  h2, h3 { margin: 10px 0; }
-  input, select { margin: 5px; padding: 5px; font-size: 1em; }
-  #results { margin-top: 15px; }
-  .result-item { cursor: pointer; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
-  .result-item:hover { background-color: #f0f0f0; }
+body { font-family: sans-serif; margin: 0; padding: 20px; }
+h2, h3 { margin: 10px 0; }
+input, select { margin: 5px; padding: 5px; font-size: 1em; }
+#results { margin-top: 15px; }
+.result-item { cursor: pointer; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
+.result-item:hover { background-color: #f0f0f0; }
 
-  #modalOverlay {
-    display: none;
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5); z-index: 999;
-    justify-content: center; align-items: center;
-  }
-  #modalContent {
-    background: white; padding: 20px; border-radius: 8px;
-    max-width: 90%; max-height: 80%; overflow-y: auto; 
-    box-sizing: border-box;
-  }
-  #modalContent h3 { margin-top: 0; word-break: break-word; }
-  #modalContent p { white-space: pre-wrap; word-break: break-word; }
+#modalOverlay {
+display: none;
+position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+background: rgba(0,0,0,0.5); z-index: 999;
+justify-content: center; align-items: center;
+}
+#modalContent {
+background: white; padding: 20px; border-radius: 8px;
+max-width: 90%; max-height: 80%; overflow-y: auto; 
+box-sizing: border-box;
+}
+#modalContent h3 { margin-top: 0; word-break: break-word; }
+#modalContent p { white-space: pre-wrap; word-break: break-word; }
 </style>
 </head>
 <body>
@@ -57,232 +33,119 @@
 
 <label>カテゴリー：</label>
 <select id="categorySelect">
-  <option value="">すべて</option>
+<option value="">すべて</option>
 </select>
 
 <label>検索：</label>
 <input type="text" id="keyword" placeholder="キーワードを入力">
 <select id="mode">
-  <option value="AND">AND検索</option>
-  <option value="OR">OR検索</option>
+<option value="AND">AND検索</option>
+<option value="OR">OR検索</option>
 </select>
 
 <h3>検索結果</h3>
 <div id="results"></div>
 
 <div id="modalOverlay">
-  <div id="modalContent">
-    <h3 id="modalTitle"></h3>
-    <p id="modalBody"></p>
-  </div>
+<div id="modalContent">
+<h3 id="modalTitle"></h3>
+<p id="modalBody"></p>
+</div>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
 
-const excelData = [{category: "カテゴリ1",category2: "サブ1",subject: "件名1",body: `
+const excelData = [{category: "11111",category2: "22222",subject: "33333",body: `
 本文行1
 本文行2
 本文行3
 本文行4
 本文行5
-本文行6
-本文行7
-本文行8
-本文行9
-本文行10
-本文行11
-本文行12
-本文行13
-本文行14
-本文行15
-本文行16
-本文行17
-本文行18
-本文行19
-本文行20
-本文行21
-本文行22
-本文行23
-本文行24
-本文行25
-本文行26
-本文行27
-本文行28
-本文行29
-本文行30
-本文行31
-本文行32
-本文行33
-本文行34
-本文行35
-本文行36
-本文行37
-本文行38
-本文行39
-本文行40
-本文行41
-本文行42
-本文行43
-本文行44
-本文行45
-本文行46
-本文行47
-本文行48
-本文行49
-本文行50
 
-`},{category: "カテゴリ2",category2: "サブ2",subject: "件名2",body: `
+`},{category: "44444",category2: "55555",subject: "66666",body: `
 本文A1
 本文A2
 本文A3
 本文A4
 本文A5
-本文A6
-本文A7
-本文A8
-本文A9
 
-`},{category: "カテゴリ2",category2: "サブ2",subject: "件名2",body: `
-本文A10
+`},{category: "77777",category2: "88888",subject: "99999",body: `
 本文A11
 本文A12
 本文A13
 本文A14
 本文A15
-本文A16
-本文A17
 
-`},{category: "カテゴリ2",category2: "サブ2",subject: "件名2",body: `
-本文A18
-本文A19
-本文A20
-本文A21
-本文A22
-本文A23
-本文A24
-本文A25
-本文A26
-本文A27
-本文A28
-
-`},{category: "カテゴリ2",category2: "サブ2",subject: "件名2",body:`
-本文A29
-本文A30
-本文A31
-本文A32
-本文A33
-本文A34
-本文A35
-本文A36
-本文A37
-本文A38
-本文A39
-本文A40
-本文A41
-本文A42
-本文A43
-本文A44
-本文A45
-本文A46
-本文A47
-本文A48
-本文A49
-本文A50
-
-`},{category: "カテゴリ1",category2: "サブ3",subject: "件名3",body:`
-本文B1
-本文B2
-本文B3
 `}];
 
-  const modalOverlay = document.getElementById("modalOverlay");
-  const modalTitle = document.getElementById("modalTitle");
-  const modalBody = document.getElementById("modalBody");
+const modalOverlay = document.getElementById("modalOverlay");
+const modalTitle = document.getElementById("modalTitle");
+const modalBody = document.getElementById("modalBody");
 
-  function showModal(title, body) {
-    modalTitle.textContent = title;
-    modalBody.textContent = body;
-    modalOverlay.style.display = "flex";
-  }
+function showModal(title, body) {
+modalTitle.textContent = title;
+modalBody.textContent = body;
+modalOverlay.style.display = "flex";
+}
 
-  function closeModal() {
-    modalOverlay.style.display = "none";
-  }
+function closeModal() {
+modalOverlay.style.display = "none";
+}
 
-  modalOverlay.addEventListener("click", function(e) {
-    if(e.target === modalOverlay) closeModal();
-  });
+modalOverlay.addEventListener("click", function(e) {
+if(e.target === modalOverlay) closeModal();
+});
 
-  function performSearch() {
-    const cat = document.getElementById("categorySelect").value.trim();
-    const keyword = document.getElementById("keyword").value.trim();
-    const mode = document.getElementById("mode").value;
-    const resultsDiv = document.getElementById("results");
-    resultsDiv.innerHTML = "";
+function performSearch() {
+const cat = document.getElementById("categorySelect").value.trim();
+const keyword = document.getElementById("keyword").value.trim();
+const mode = document.getElementById("mode").value;
+const resultsDiv = document.getElementById("results");
+resultsDiv.innerHTML = "";
 
-    let keywords = keyword ? keyword.split(/\s+/) : [];
+let keywords = keyword ? keyword.split(/\s+/) : [];
 
-    const filtered = excelData.filter(item => {
-      if (cat && item.category.trim() !== cat) return false;
-      if (keywords.length === 0) return true;
-      const text = (item.category2 + " " + item.subject + " " + item.body).toLowerCase();
-      if (mode === "AND") return keywords.every(k => text.includes(k.toLowerCase()));
-      else return keywords.some(k => text.includes(k.toLowerCase()));
-    });
+const filtered = excelData.filter(item => {
+if (cat && item.category.trim() !== cat) return false;
+if (keywords.length === 0) return true;
+const text = (item.category2 + " " + item.subject + " " + item.body).toLowerCase();
+if (mode === "AND") return keywords.every(k => text.includes(k.toLowerCase()));
+else return keywords.some(k => text.includes(k.toLowerCase()));
+});
 
-    if (filtered.length === 0) {
-      resultsDiv.textContent = "該当なし";
-      return;
-    }
+if (filtered.length === 0) {
+resultsDiv.textContent = "該当なし";
+return;
+}
 
-    filtered.forEach(item => {
-      const div = document.createElement("div");
-      div.className = "result-item";
-      div.textContent = `カテゴリー: ${item.category} | カテゴリー2: ${item.category2} | 件名: ${item.subject}`;
-      div.addEventListener("click", () => {
-        showModal(item.subject, item.body);
-      });
-      resultsDiv.appendChild(div);
-    });
-  }
+filtered.forEach(item => {
+const div = document.createElement("div");
+div.className = "result-item";
+div.textContent = `カテゴリー: ${item.category} | カテゴリー2: ${item.category2} | 件名: ${item.subject}`;
+div.addEventListener("click", () => {
+showModal(item.subject, item.body);
+});
+resultsDiv.appendChild(div);
+});
+}
 
-  const categories = new Set(excelData.map(item => item.category));
-  const select = document.getElementById("categorySelect");
-  categories.forEach(c => {
-    const opt = document.createElement("option");
-    opt.value = c;
-    opt.textContent = c;
-    select.appendChild(opt);
-  });
+const categories = new Set(excelData.map(item => item.category));
+const select = document.getElementById("categorySelect");
+categories.forEach(c => {
+const opt = document.createElement("option");
+opt.value = c;
+opt.textContent = c;
+select.appendChild(opt);
+});
 
-  document.getElementById("keyword").addEventListener("input", performSearch);
-  document.getElementById("categorySelect").addEventListener("change", performSearch);
-  document.getElementById("mode").addEventListener("change", performSearch);
+document.getElementById("keyword").addEventListener("input", performSearch);
+document.getElementById("categorySelect").addEventListener("change", performSearch);
+document.getElementById("mode").addEventListener("change", performSearch);
 
-  performSearch();
+performSearch();
 });
 </script>
 
-</body>
-</html>
-〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
-
-        </code></pre>
-      </div>
-    </section>
-
-    <aside class="notes" aria-label="補助情報">
-      <h3></h3>
-      <p></p>
-    </aside>
-  </main>
-
-  <footer>
-    <p><!-- 自動で差し替え --> <time id="today"></time></p>
-    <p><small></small></p>
-  </footer>
-
-  <script src="script.js" defer></script>
 </body>
 </html>
