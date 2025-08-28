@@ -25,19 +25,19 @@
 
 Option Explicit
 
-' === D列セルをダブルクリックで UserForm1 を開く（モデルレス） ===
+' === D列セルをダブルクリックで UserForm2 を開く（モデルレス） ===
 Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean)
 If Not Intersect(Target, Me.Columns("D")) Is Nothing Then
 If Target.Row >= 2 Then ' 1行目はヘッダー想定
 Cancel = True
 
 ' 既に開いていなければモデルレスで表示
-If Not IsUserFormLoaded("UserForm1") Then
-UserForm1.Show vbModeless
+If Not IsUserFormLoaded("UserForm2") Then
+UserForm2.Show vbModeless
 End If
 
 ' 選択行の E列を TextB に反映
-UserForm1.TextB.Value = Me.Cells(Target.Row, "E").Value
+UserForm2.TextB.Value = Me.Cells(Target.Row, "E").Value
 End If
 End If
 End Sub
@@ -47,8 +47,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 Dim rng As Range
 Set rng = Intersect(Target, Me.Range("B:E"))
 If rng Is Nothing Then Exit Sub
-If IsUserFormLoaded("UserForm1") Then
-UserForm1.RefreshData
+If IsUserFormLoaded("UserForm2") Then
+UserForm2.RefreshData
 End If
 End Sub
 
@@ -67,7 +67,7 @@ End Function
 
 Option Explicit
 
-' === UserForm1 内に追加 ===
+' === UserForm2 内に追加 ===
 Public Sub RefreshData()
 ' 既存の検索処理を呼び出す
 SearchAndDisplay
