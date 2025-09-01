@@ -2,153 +2,153 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<title>試作品</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>コンテンツ検索</title>
 <style>
-  body { font-family: sans-serif; margin: 20px; background: #f9f9f9; }
-  h2 { color: #333; }
+body { font-family: sans-serif; margin: 0; padding: 20px; }
+h2, h3, h4 { margin: 10px 0; }
+input, select { margin: 5px; padding: 5px; font-size: 1em; }
+#container { display: flex; flex-wrap: wrap; gap: 20px; }
+#results, #history { flex: 1; min-width: 300px; }
+.result-item { cursor: pointer; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
+.result-item:hover { background-color: #f0f0f0; }
 
-  /* 検索フォーム */
-  select, input, button { margin: 5px; padding: 6px; font-size: 14px; }
-
-  /* 検索結果 */
-  #results div {
-    background: #fff;
-    border: 1px solid #ddd;
-    margin: 6px 0;
-    padding: 8px;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  #results div:hover { background: #f0f8ff; }
-  .subject { font-weight: bold; color: #0066cc; font-size: 16px; }
-  .category { font-size: 12px; color: #555; margin-top: 4px; }
-
-  /* モーダル */
-  .modal {
-    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.6); z-index: 1000;
-  }
-  .modal-content {
-    background: #fff; width: 90%; max-width: 600px; margin: 60px auto;
-    padding: 20px; border-radius: 8px; max-height: 70vh; overflow-y: auto;
-  }
-  .modal h3 { margin-top: 0; color: #0066cc; }
+#modalOverlay {
+  display: none;
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); z-index: 999;
+  justify-content: center; align-items: center;
+}
+#modalContent {
+  background: white; padding: 20px; border-radius: 8px;
+  max-width: 90%; max-height: 80%; overflow-y: auto;
+  box-sizing: border-box;
+}
+#modalContent h3 { margin-top: 0; word-break: break-word; }
+#modalContent p { white-space: pre-wrap; word-break: break-word; }
 </style>
 </head>
 <body>
 
-<h2>コンテンツ検索</h2>
-<label>カテゴリー: 
-  <select id="categorySelect">
-    <option value="">すべて</option>
-  </select>
-</label>
-<label>キーワード: <input type="text" id="keyword"></label>
-<select id="searchType">
-  <option value="AND">AND</option>
-  <option value="OR">OR</option>
+<h2>試作品</h2>
+
+<label>カテゴリー：</label>
+<select id="categorySelect">
+<option value="">すべて</option>
 </select>
-<button onclick="performSearch()">検索</button>
 
-<div id="results"></div>
+<label>検索：</label>
+<input type="text" id="keyword" placeholder="キーワードを入力">
+<select id="mode">
+<option value="AND">AND検索</option>
+<option value="OR">OR検索</option>
+</select>
 
-<!-- モーダル -->
-<div id="modal" class="modal" onclick="closeModal(event)">
-  <div class="modal-content" id="modalContent"></div>
+<div id="container">
+  <div>
+    <h3>検索結果</h3>
+    <div id="results"></div>
+  </div>
+  <div id="history">
+    <h3>更新履歴</h3>
+    <p>［Ver］1.0｜［更新内容］新規作成｜［更新者］菅原｜［承認者］｜［更新日］2025/08/29</p>
+    <p>［Ver］1.1｜［更新内容］リンク対応｜［更新者］菅原｜［承認者］｜［更新日］2025/09/01</p>
+  </div>
+</div>
+
+<div id="modalOverlay">
+  <div id="modalContent">
+    <h3 id="modalTitle"></h3>
+    <p id="modalBody"></p>
+  </div>
 </div>
 
 <script>
-let excelData = [
-  {
-    category: "ニュース",
-    category2: "国内",
-    subject: "政治に関する最新情報",
-    body: `本文サンプル1 行1
-本文サンプル1 行2
-本文サンプル1 行3
-本文サンプル1 行4
-本文サンプル1 行5`
-  },
-  {
-    category: "スポーツ",
-    category2: "海外",
-    subject: "サッカー大会の結果",
-    body: `本文サンプル2 行1
-本文サンプル2 行2
-本文サンプル2 行3
-本文サンプル2 行4
-本文サンプル2 行5`
-  },
-  {
-    category: "テクノロジー",
-    category2: "AI",
-    subject: "新しいAI技術の発表",
-    body: `本文サンプル3 行1
-本文サンプル3 行2
-本文サンプル3 行3
-本文サンプル3 行4
-本文サンプル3 行5`
+document.addEventListener("DOMContentLoaded", function() {
+  const excelData = [
+    {category: "メモ", category2: "URL／アカウント", subject:"参考サイト", body: `
+こちらは参考用のリンクです。
+<a href="https://www.google.com" target="_blank">Google</a> を開きます。
+`},
+    {category: "世帯(個人)", category2: "生活", subject:"家計メモ", body: `
+電気代の支払い期日を確認。
+<a href="https://www.tepco.co.jp" target="_blank">東京電力</a> のサイトで詳細確認。
+`},
+    {category: "事業", category2: "公式サイト", subject:"業務連絡", body: `
+業務管理は公式ポータルから。
+<a href="https://www.example.com" target="_blank">ポータルサイト</a> を利用してください。
+`}
+  ];
+
+  const modalOverlay = document.getElementById("modalOverlay");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalBody = document.getElementById("modalBody");
+
+  function showModal(title, body) {
+    modalTitle.textContent = title;
+    modalBody.innerHTML = body; // ←リンクを有効化
+    modalOverlay.style.display = "flex";
   }
-];
 
-// カテゴリー選択肢を生成
-function populateCategories() {
-  const select = document.getElementById("categorySelect");
-  let cats = [...new Set(excelData.map(d => d.category))];
-  cats.forEach(c => {
-    let opt = document.createElement("option");
-    opt.value = c; opt.textContent = c;
-    select.appendChild(opt);
+  function closeModal() {
+    modalOverlay.style.display = "none";
+  }
+
+  modalOverlay.addEventListener("click", function(e) {
+    if(e.target === modalOverlay) closeModal();
   });
-}
 
-// 検索処理
-function performSearch() {
-  const category = document.getElementById("categorySelect").value;
-  const keyword = document.getElementById("keyword").value.trim().toLowerCase();
-  const type = document.getElementById("searchType").value;
-  const results = document.getElementById("results");
-  results.innerHTML = "";
+  function performSearch() {
+    const cat = document.getElementById("categorySelect").value.trim();
+    const keyword = document.getElementById("keyword").value.trim();
+    const mode = document.getElementById("mode").value;
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
 
-  excelData.forEach((row, idx) => {
-    if (category && row.category !== category) return;
-    let text = [row.category2, row.subject, row.body].join(" ").toLowerCase();
-    let match = true;
-    if (keyword) {
-      let keys = keyword.split(/\s+/);
-      match = (type === "AND") ?
-        keys.every(k => text.includes(k)) :
-        keys.some(k => text.includes(k));
+    let keywords = keyword ? keyword.split(/\s+/) : [];
+
+    const filtered = excelData.filter(item => {
+      if (cat && item.category.trim() !== cat) return false;
+      if (keywords.length === 0) return true;
+      const text = (item.category2 + " " + item.subject + " " + item.body).toLowerCase();
+      if (mode === "AND") return keywords.every(k => text.includes(k.toLowerCase()));
+      else return keywords.some(k => text.includes(k.toLowerCase()));
+    });
+
+    if (filtered.length === 0) {
+      resultsDiv.textContent = "該当なし";
+      return;
     }
-    if (match) {
+
+    filtered.forEach(item => {
       const div = document.createElement("div");
-      div.innerHTML = `<div class="subject">${row.subject}</div>
-                       <div class="category">[${row.category}] [${row.category2}]</div>`;
-      div.onclick = () => openModal(row);
-      results.appendChild(div);
+      div.className = "result-item";
+      div.textContent = `［カテゴリー：${item.category}］｜［詳細：${item.category2}］`;
+      div.addEventListener("click", () => {
+        showModal(item.subject, item.body);
+      });
+      resultsDiv.appendChild(div);
+    });
+  }
+
+  const categories = new Set(excelData.map(item => item.category));
+  const select = document.getElementById("categorySelect");
+  categories.forEach(c => {
+    if(c){
+      const opt = document.createElement("option");
+      opt.value = c;
+      opt.textContent = c;
+      select.appendChild(opt);
     }
   });
-}
 
-// モーダル表示
-function openModal(row) {
-  const modal = document.getElementById("modal");
-  const content = document.getElementById("modalContent");
-  content.innerHTML = `<h3>${row.subject}</h3><pre>${row.body}</pre>`;
-  modal.style.display = "block";
-}
+  document.getElementById("keyword").addEventListener("input", performSearch);
+  document.getElementById("categorySelect").addEventListener("change", performSearch);
+  document.getElementById("mode").addEventListener("change", performSearch);
 
-// モーダルを閉じる
-function closeModal(e) {
-  if (e.target.id === "modal") {
-    document.getElementById("modal").style.display = "none";
-  }
-}
-
-// 初期化
-populateCategories();
-performSearch();
+  performSearch();
+});
 </script>
+
 </body>
 </html>
