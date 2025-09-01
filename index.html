@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body { font-family: sans-serif; margin: 0; padding: 20px; }
-h2, h3, h4 { margin: 10px 0; cursor: pointer; }
+h2, h3,h4 { margin: 10px 0; cursor: pointer; }
 input, select { margin: 5px; padding: 5px; font-size: 1em; }
 
 /* テーブル共通 */
@@ -33,7 +33,7 @@ th { background: #f8f8f8; }
 #modalContent h3 { margin-top: 0; word-break: break-word; }
 #modalContent p { white-space: pre-wrap; word-break: break-word; }
 
-/* 更新履歴エリア */
+/* 更新履歴 */
 #historyTable { display: none; margin-top: 10px; }
 </style>
 </head>
@@ -63,7 +63,6 @@ th { background: #f8f8f8; }
   </div>
 </div>
 
-<!-- 更新履歴 -->
 <h4 id="toggleHistory">＃更新履歴（クリックで表示/非表示）</h4>
 <div id="historyTable">
   <table>
@@ -83,19 +82,29 @@ th { background: #f8f8f8; }
 <script>
 document.addEventListener("DOMContentLoaded", function() {
 
-// データ定義（リンク入りサンプルあり）
+// データ定義（リンク入りサンプル）
 const excelData = [
-  {category: "メモ", category2: "URL／アカウント", subject: "参考リンク",
-   body: `公式サイトはこちら → <a href="https://example.com" target="_blank">https://example.com</a>`},
-  {category: "世帯(個人)", category2: "生活関連", subject: "備忘録",
-   body: `ここには個人関連のメモが入ります。`},
-  {category: "事業", category2: "経営", subject: "事業計画",
-   body: `事業計画の初期草案。`},
-  {category: "学校", category2: "教育", subject: "学習メモ",
-   body: `授業の内容メモ。`},
+  {
+    category: "メモ",
+    category2: "URL／アカウント",
+    subject: "参考リンク",
+    body: `公式サイトはこちら → <a href="https://example.com" class="copyLink" data-copy="Exampleサイト">https://example.com</a>`
+  },
+  {
+    category: "世帯(個人)",
+    category2: "生活関連",
+    subject: "備忘録",
+    body: `個人関連のメモです。`
+  },
+  {
+    category: "事業",
+    category2: "経営",
+    subject: "事業計画",
+    body: `事業計画の初期草案はこちら。`
+  },
 ];
 
-// 更新履歴データ
+// 更新履歴
 const updateHistory = [
   {ver:"1.0", content:"新規作成", author:"菅原", approver:"", date:"2025/08/29"},
   {ver:"1.1", content:"リンク追加", author:"菅原", approver:"上長A", date:"2025/09/01"}
@@ -108,15 +117,11 @@ const modalBody = document.getElementById("modalBody");
 
 function showModal(title, body) {
   modalTitle.textContent = title;
-  modalBody.innerHTML = body; // ←リンク有効化
+  modalBody.innerHTML = body; // HTML描画 → リンク有効
   modalOverlay.style.display = "flex";
 }
-function closeModal() {
-  modalOverlay.style.display = "none";
-}
-modalOverlay.addEventListener("click", e => {
-  if(e.target === modalOverlay) closeModal();
-});
+function closeModal() { modalOverlay.style.display = "none"; }
+modalOverlay.addEventListener("click", e => { if(e.target === modalOverlay) closeModal(); });
 
 // 検索処理
 function performSearch() {
@@ -130,71 +135,60 @@ function performSearch() {
 
   const filtered = excelData.filter(item => {
     if (cat && item.category.trim() !== cat) return false;
-    if (keywords.length === 0) return true;
+    if (!keywords.length) return true;
     const text = (item.category2 + " " + item.subject + " " + item.body).toLowerCase();
     if (mode === "AND") return keywords.every(k => text.includes(k.toLowerCase()));
     else return keywords.some(k => text.includes(k.toLowerCase()));
   });
 
-  if (filtered.length === 0) {
-    resultsDiv.textContent = "該当なし";
-    return;
-  }
+  if (!filtered.length) { resultsDiv.textContent = "該当なし"; return; }
 
-  // テーブル作成
   const table = document.createElement("table");
-  const thead = document.createElement("thead");
-  thead.innerHTML = `<tr><th>カテゴリー</th><th>詳細</th><th>件名</th></tr>`;
-  table.appendChild(thead);
-
+  table.innerHTML = `<thead><tr><th>カテゴリー</th><th>詳細</th><th>件名</th></tr></thead>`;
   const tbody = document.createElement("tbody");
+
   filtered.forEach(item => {
     const row = document.createElement("tr");
     row.className = "result-row";
-    row.innerHTML = `
-      <td>${item.category}</td>
-      <td>${item.category2}</td>
-      <td>${item.subject}</td>
-    `;
-    row.addEventListener("click", () => {
-      showModal(item.subject, item.body);
-    });
+    row.innerHTML = `<td>${item.category}</td><td>${item.category2}</td><td>${item.subject}</td>`;
+    row.addEventListener("click", () => { showModal(item.subject, item.body); });
     tbody.appendChild(row);
   });
   table.appendChild(tbody);
   resultsDiv.appendChild(table);
 }
 
-// カテゴリー選択肢生成
+// カテゴリ生成
 const categories = new Set(excelData.map(item => item.category));
 const select = document.getElementById("categorySelect");
 categories.forEach(c => {
-  if(c.trim()){
-    const opt = document.createElement("option");
-    opt.value = c;
-    opt.textContent = c;
-    select.appendChild(opt);
-  }
+  if(c.trim()) { const opt=document.createElement("option"); opt.value=c; opt.textContent=c; select.appendChild(opt); }
 });
 
-// 更新履歴テーブル生成
+// 更新履歴生成
 const historyBody = document.getElementById("historyBody");
 updateHistory.forEach(h => {
   const row = document.createElement("tr");
-  row.innerHTML = `
-    <td>${h.ver}</td>
-    <td>${h.content}</td>
-    <td>${h.author}</td>
-    <td>${h.approver}</td>
-    <td>${h.date}</td>
-  `;
+  row.innerHTML = `<td>${h.ver}</td><td>${h.content}</td><td>${h.author}</td><td>${h.approver}</td><td>${h.date}</td>`;
   historyBody.appendChild(row);
 });
 
 // 更新履歴トグル
 document.getElementById("toggleHistory").addEventListener("click", () => {
   const tbl = document.getElementById("historyTable");
-  tbl.style.display = (tbl.style.display === "none" || tbl.style.display === "") ? "block" : "none";
+  tbl.style.display = (tbl.style.display==="none"||tbl.style.display==="") ? "block" : "none";
+});
+
+// モーダル内リンククリック処理（コピー＋遷移）
+document.addEventListener("click", async function(e){
+  const link = e.target.closest("a.copyLink");
+  if(link){
+    e.preventDefault();
+    const textToCopy = link.dataset.copy || "";
+    try { await navigator.clipboard.writeText(textToCopy); } 
+    catch(err){ console.error("コピー失敗", err); }
+    window.open(link.href,"_blank");
+  }
 });
 
 // イベント設定
