@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ポータルサイト</title>
+  <title>ポータルサイト（アコーディオン自動高さ調整）</title>
   <style>
-    /* ベーススタイル */
     body {
       font-family: system-ui, sans-serif;
       margin: 0;
@@ -29,24 +28,45 @@
       padding: 1rem;
     }
 
-    /* グループ枠 */
     section.group {
       background-color: #fff;
       border: 2px solid #004080;
       border-radius: 6px;
-      padding: 1rem;
+      overflow: hidden;
     }
 
-    section.group h2 {
-      margin-top: 0;
-      font-size: 1.2rem;
-      color: #004080;
+    button.accordion-toggle {
+      width: 100%;
+      background: #004080;
+      color: #fff;
+      border: none;
+      text-align: left;
+      padding: 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button.accordion-toggle:hover,
+    button.accordion-toggle:focus {
+      background: #0059b3;
+      outline: none;
+    }
+
+    .accordion-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      padding: 0 1rem;
+    }
+
+    .accordion-panel.open {
+      /* open時にpaddingを戻す */
+      padding: 1rem;
     }
 
     ul.content-list {
       list-style: none;
       padding: 0;
-      margin: 0.5rem 0 0;
+      margin: 0;
     }
 
     ul.content-list li {
@@ -77,7 +97,6 @@
       margin-top: 2rem;
     }
 
-    /* レスポンシブ対応 */
     @media (min-width: 600px) {
       main {
         grid-template-columns: 1fr 1fr;
@@ -91,14 +110,34 @@
     }
   </style>
   <script>
-    // コンテンツリンク処理（セキュリティ: noopener）
     document.addEventListener("DOMContentLoaded", () => {
+      // コンテンツリンク処理
       document.querySelectorAll("a[data-url]").forEach(link => {
         link.addEventListener("click", e => {
           e.preventDefault();
           const url = link.getAttribute("data-url");
           if (url) {
             window.open(url, "_blank", "noopener,noreferrer");
+          }
+        });
+      });
+
+      // アコーディオン処理
+      document.querySelectorAll(".accordion-toggle").forEach(button => {
+        button.addEventListener("click", () => {
+          const panel = button.nextElementSibling;
+          const isOpen = panel.classList.contains("open");
+
+          if (isOpen) {
+            panel.style.maxHeight = null;
+            panel.classList.remove("open");
+            panel.hidden = true;
+            button.setAttribute("aria-expanded", "false");
+          } else {
+            panel.hidden = false;
+            panel.classList.add("open");
+            panel.style.maxHeight = panel.scrollHeight + "px";
+            button.setAttribute("aria-expanded", "true");
           }
         });
       });
@@ -112,58 +151,54 @@
   <main>
     <!-- グループ1 -->
     <section class="group">
-      <h2>各種業務ツール</h2>
-      <ul class="content-list">
-        <li><a href="#" data-url="https://example.com/page1">コンテンツ1</a></li>
-        <li><a href="#" data-url="https://example.com/page2">コンテンツ2</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file1.html">コンテンツ3</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file2.html">コンテンツ4</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file12.html">コンテンツ14</a></li>
-      </ul>
+      <button class="accordion-toggle" aria-expanded="false" aria-controls="panel1">グループ1</button>
+      <div id="panel1" class="accordion-panel" hidden>
+        <ul class="content-list">
+          <li><a href="#" data-url="https://example.com/page1">コンテンツ1</a></li>
+          <li><a href="#" data-url="https://example.com/page2">コンテンツ2</a></li>
+          <li><a href="#" data-url="file:///C:/local/path/file1.html">コンテンツ3</a></li>
+          <li><a href="#" data-url="file:///C:/local/path/file2.html">コンテンツ4</a></li>
+        </ul>
+      </div>
     </section>
 
     <!-- グループ2 -->
     <section class="group">
-      <h2>業務資料</h2>
-      <ul class="content-list">
-        <li><a href="#" data-url="https://example.com/page5">コンテンツ1</a></li>
-        <li><a href="#" data-url="https://example.com/page6">コンテンツ2</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file3.html">コンテンツ3</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file4.html">コンテンツ4</a></li>
-      </ul>
+      <button class="accordion-toggle" aria-expanded="false" aria-controls="panel2">グループ2</button>
+      <div id="panel2" class="accordion-panel" hidden>
+        <ul class="content-list">
+          <li><a href="#" data-url="https://example.com/page5">コンテンツ1</a></li>
+          <li><a href="#" data-url="https://example.com/page6">コンテンツ2</a></li>
+          <li><a href="#" data-url="file:///C:/local/path/file3.html">コンテンツ3</a></li>
+          <li><a href="#" data-url="file:///C:/local/path/file4.html">コンテンツ4</a></li>
+        </ul>
+      </div>
     </section>
 
     <!-- グループ3 -->
     <section class="group">
-      <h2>グループ3</h2>
-      <ul class="content-list">
-        <li><a href="#" data-url="https://example.com/page7">コンテンツ1</a></li>
-        <li><a href="#" data-url="https://example.com/page8">コンテンツ2</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file5.html">コンテンツ3</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file6.html">コンテンツ4</a></li>
-      </ul>
+      <button class="accordion-toggle" aria-expanded="false" aria-controls="panel3">グループ3</button>
+      <div id="panel3" class="accordion-panel" hidden>
+        <ul class="content-list">
+          <li><a href="#" data-url="https://example.com/page7">コンテンツ1</a></li>
+          <li><a href="#" data-url="https://example.com/page8">コンテンツ2</a></li>
+          <li><a href="#" data-url="file:///C:/local/path/file5.html">コンテンツ3</a></li>
+          <li><a href="#" data-url="file:///C:/local/path/file6.html">コンテンツ4</a></li>
+        </ul>
+      </div>
     </section>
 
     <!-- グループ4 -->
     <section class="group">
-      <h2>グループ4</h2>
-      <ul class="content-list">
-        <li><a href="#" data-url="https://example.com/page9">コンテンツ1</a></li>
-        <li><a href="#" data-url="https://example.com/page10">コンテンツ2</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file7.html">コンテンツ3</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file8.html">コンテンツ4</a></li>
-      </ul>
-    </section>
-    
-    <!-- グループ5 -->
-    <section class="group">
-      <h2>グループ5</h2>
-      <ul class="content-list">
-        <li><a href="#" data-url="https://example.com/page9">コンテンツ1</a></li>
-        <li><a href="#" data-url="https://example.com/page10">コンテンツ2</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file7.html">コンテンツ3</a></li>
-        <li><a href="#" data-url="file:///C:/local/path/file8.html">コンテンツ4</a></li>
-      </ul>
+      <button class="accordion-toggle" aria-expanded="false" aria-controls="panel4">グループ4</button>
+      <div id="panel4" class="accordion-panel" hidden>
+        <ul class="content-list">
+          <li><a href="#" data-url="https://example.com/page9">コンテンツ1</a></li>
+          <li><a href="#" data-url="https://example.com/page10">コンテンツ2</a></li>
+          <li><a href="#" data-url="file:///C:/local/path/file7.html">コンテンツ3</a></li>
+          <li><a href="#" data-url="file:///C:/local/path/file8.html">コンテンツ4</a></li>
+        </ul>
+      </div>
     </section>
   </main>
   <footer>
