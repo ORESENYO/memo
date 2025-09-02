@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ポータルサイト（アコーディオン自動高さ調整）</title>
+  <title>ポータルサイト（余白保持アコーディオン）</title>
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -32,7 +32,6 @@
       background-color: #fff;
       border: 2px solid #004080;
       border-radius: 6px;
-      overflow: hidden;
     }
 
     button.accordion-toggle {
@@ -52,15 +51,12 @@
     }
 
     .accordion-panel {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease;
-      padding: 0 1rem;
+      padding: 1rem;
+      display: block;         /* 常に高さを確保 */
     }
 
-    .accordion-panel.open {
-      /* open時にpaddingを戻す */
-      padding: 1rem;
+    .accordion-panel.hidden {
+      visibility: hidden;     /* 非表示だが余白は残る */
     }
 
     ul.content-list {
@@ -122,22 +118,18 @@
         });
       });
 
-      // アコーディオン処理
+      // アコーディオン処理（余白保持）
       document.querySelectorAll(".accordion-toggle").forEach(button => {
         button.addEventListener("click", () => {
           const panel = button.nextElementSibling;
-          const isOpen = panel.classList.contains("open");
+          const isHidden = panel.classList.contains("hidden");
 
-          if (isOpen) {
-            panel.style.maxHeight = null;
-            panel.classList.remove("open");
-            panel.hidden = true;
-            button.setAttribute("aria-expanded", "false");
-          } else {
-            panel.hidden = false;
-            panel.classList.add("open");
-            panel.style.maxHeight = panel.scrollHeight + "px";
+          if (isHidden) {
+            panel.classList.remove("hidden");
             button.setAttribute("aria-expanded", "true");
+          } else {
+            panel.classList.add("hidden");
+            button.setAttribute("aria-expanded", "false");
           }
         });
       });
@@ -151,8 +143,8 @@
   <main>
     <!-- グループ1 -->
     <section class="group">
-      <button class="accordion-toggle" aria-expanded="false" aria-controls="panel1">グループ1</button>
-      <div id="panel1" class="accordion-panel" hidden>
+      <button class="accordion-toggle" aria-expanded="true" aria-controls="panel1">グループ1</button>
+      <div id="panel1" class="accordion-panel">
         <ul class="content-list">
           <li><a href="#" data-url="https://example.com/page1">コンテンツ1</a></li>
           <li><a href="#" data-url="https://example.com/page2">コンテンツ2</a></li>
@@ -165,38 +157,12 @@
     <!-- グループ2 -->
     <section class="group">
       <button class="accordion-toggle" aria-expanded="false" aria-controls="panel2">グループ2</button>
-      <div id="panel2" class="accordion-panel" hidden>
+      <div id="panel2" class="accordion-panel hidden">
         <ul class="content-list">
           <li><a href="#" data-url="https://example.com/page5">コンテンツ1</a></li>
           <li><a href="#" data-url="https://example.com/page6">コンテンツ2</a></li>
           <li><a href="#" data-url="file:///C:/local/path/file3.html">コンテンツ3</a></li>
           <li><a href="#" data-url="file:///C:/local/path/file4.html">コンテンツ4</a></li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- グループ3 -->
-    <section class="group">
-      <button class="accordion-toggle" aria-expanded="false" aria-controls="panel3">グループ3</button>
-      <div id="panel3" class="accordion-panel" hidden>
-        <ul class="content-list">
-          <li><a href="#" data-url="https://example.com/page7">コンテンツ1</a></li>
-          <li><a href="#" data-url="https://example.com/page8">コンテンツ2</a></li>
-          <li><a href="#" data-url="file:///C:/local/path/file5.html">コンテンツ3</a></li>
-          <li><a href="#" data-url="file:///C:/local/path/file6.html">コンテンツ4</a></li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- グループ4 -->
-    <section class="group">
-      <button class="accordion-toggle" aria-expanded="false" aria-controls="panel4">グループ4</button>
-      <div id="panel4" class="accordion-panel" hidden>
-        <ul class="content-list">
-          <li><a href="#" data-url="https://example.com/page9">コンテンツ1</a></li>
-          <li><a href="#" data-url="https://example.com/page10">コンテンツ2</a></li>
-          <li><a href="#" data-url="file:///C:/local/path/file7.html">コンテンツ3</a></li>
-          <li><a href="#" data-url="file:///C:/local/path/file8.html">コンテンツ4</a></li>
         </ul>
       </div>
     </section>
