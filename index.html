@@ -5,24 +5,32 @@
 <title>試作品</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { font-family: sans-serif; margin: 0; padding: 20px; }
+body { font-family: sans-serif; margin: 0; }
 
 /* ヘッダー */
-header { text-align: center; margin-bottom: 20px; }
+header {
+  text-align: center;
+  margin-bottom: 20px;
+  background: #4a90e2; /* ←ここを変えると色変更可能 */
+  color: white;
+  padding: 15px 10px;
+  position: relative;
+}
 header h1 { margin: 0; font-size: 1.8em; }
-header .date { font-size: 0.9em; color: #666; }
+header .date { font-size: 0.9em; }
 
-/* ハンバーガーメニュー */
+/* ハンバーガーメニュー（≡ / ✕ 切り替え） */
 #menuToggle {
-  position: fixed;
-  top: 10px;
+  position: absolute;
+  top: 50%;
   left: 10px;
+  transform: translateY(-50%);
   font-size: 1.8em; /* タイトルと同じサイズ */
   cursor: pointer;
-  z-index: 1100; /* 常に最前面 */
-  background: white;
-  border-radius: 4px;
-  padding: 2px 8px;
+  z-index: 1100;
+  background: transparent;
+  border: none;
+  color: white;
   user-select: none;
   line-height: 1;
 }
@@ -38,32 +46,11 @@ header .date { font-size: 0.9em; color: #666; }
   box-shadow: 2px 0 5px rgba(0,0,0,0.3);
   transition: left 0.3s ease;
   z-index: 1000;
-  display: flex;
-  flex-direction: column;
+  padding-top: 60px; /* ヘッダーと被らない余白 */
 }
 #sideMenu.open { left: 0; }
 
-/* サイドメニューヘッダー（✕ ボタン用） */
-#sideMenuHeader {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 10px;
-  background: #ddd;
-}
-#sideMenuHeader span {
-  font-size: 1.8em; /* タイトルと同じサイズ */
-  cursor: pointer;
-  user-select: none;
-}
-
 /* アコーディオン */
-#sideMenuContent {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
-  box-sizing: border-box;
-}
 .accordion-group { margin-bottom: 10px; }
 .accordion-header {
   font-weight: bold;
@@ -80,52 +67,49 @@ header .date { font-size: 0.9em; color: #666; }
   color: #333;
 }
 .accordion-content a:hover { text-decoration: underline; }
+
+main { padding: 20px; }
 </style>
 </head>
 <body>
 
-<!-- ハンバーガーメニュー -->
-<div id="menuToggle">≡</div>
-
-<!-- サイドメニュー -->
-<div id="sideMenu">
-  <div id="sideMenuHeader">
-    <span id="menuClose">✕</span>
-  </div>
-  <div id="sideMenuContent">
-    <div class="accordion-group">
-      <div class="accordion-header">グループ1</div>
-      <div class="accordion-content">
-        <a href="#">コンテンツ1</a>
-        <a href="#">コンテンツ2</a>
-      </div>
-    </div>
-    <div class="accordion-group">
-      <div class="accordion-header">グループ2</div>
-      <div class="accordion-content">
-        <a href="#">コンテンツ3</a>
-        <a href="#">コンテンツ4</a>
-      </div>
-    </div>
-  </div>
-</div>
-
 <header>
+  <button id="menuToggle">≡</button>
   <h1>試作品</h1>
   <div class="date" id="today"></div>
 </header>
 
-<label>カテゴリー：</label>
-<select id="categorySelect">
-  <option value="">すべて</option>
-</select>
+<!-- サイドメニュー -->
+<div id="sideMenu">
+  <div class="accordion-group">
+    <div class="accordion-header">グループ1</div>
+    <div class="accordion-content">
+      <a href="#">コンテンツ1</a>
+      <a href="#">コンテンツ2</a>
+    </div>
+  </div>
+  <div class="accordion-group">
+    <div class="accordion-header">グループ2</div>
+    <div class="accordion-content">
+      <a href="#">コンテンツ3</a>
+      <a href="#">コンテンツ4</a>
+    </div>
+  </div>
+</div>
 
-<label>検索：</label>
-<input type="text" id="keyword" placeholder="キーワードを入力">
-<select id="mode">
-  <option value="AND">AND検索</option>
-  <option value="OR">OR検索</option>
-</select>
+<main>
+  <label>カテゴリー：</label>
+  <select id="categorySelect">
+    <option value="">すべて</option>
+  </select>
+
+  <label>検索：</label>
+  <input type="text" id="keyword" placeholder="キーワードを入力">
+  <select id="mode">
+    <option value="AND">AND検索</option>
+    <option value="OR">OR検索</option>
+  </select>
+</main>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -138,16 +122,13 @@ const dd = String(today.getDate()).padStart(2,"0");
 const day = days[today.getDay()];
 document.getElementById("today").textContent = `${yyyy}/${mm}/${dd}(${day})`;
 
-// サイドメニュー処理
+// サイドメニュー処理（≡ ↔ ✕ 切り替え）
 const menuToggle = document.getElementById("menuToggle");
 const sideMenu = document.getElementById("sideMenu");
-const menuClose = document.getElementById("menuClose");
 
 menuToggle.addEventListener("click", () => {
-  sideMenu.classList.add("open");
-});
-menuClose.addEventListener("click", () => {
-  sideMenu.classList.remove("open");
+  const isOpen = sideMenu.classList.toggle("open");
+  menuToggle.textContent = isOpen ? "✕" : "≡";
 });
 
 // アコーディオン処理
