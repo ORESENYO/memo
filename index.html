@@ -30,6 +30,7 @@ header p { margin: 5px 0 0; font-size: 0.9em; }
   border: none;
   cursor: pointer;
   padding: 5px 10px;
+  z-index: 1001;
 }
 
 /* サイドメニュー */
@@ -41,7 +42,7 @@ header p { margin: 5px 0 0; font-size: 0.9em; }
   background: #f9f9f9;
   box-shadow: 2px 0 5px rgba(0,0,0,0.3);
   transition: left 0.3s ease;
-  z-index: 999;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
 }
@@ -54,9 +55,17 @@ header p { margin: 5px 0 0; font-size: 0.9em; }
   text-align: center;
   padding: 15px 20px 5px;
   flex-shrink: 0;
+  position: relative;
 }
 #sideMenu header h2 { margin: 0; font-size: 1.5em; }
-#sideMenu header p { margin: 5px 0 0; font-size: 0.9em; }
+
+/* サイドメニュー用の閉じるボタン */
+#sideMenu.open #menuToggle {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
 
 /* サイドメニュー内コンテンツ */
 #menuContent {
@@ -120,7 +129,6 @@ th { background: #f8f8f8; }
 <div id="sideMenu">
   <header>
     <h2>メニュー</h2>
-    <p id="todayMenu"></p>
   </header>
   <div id="menuContent">
     <div class="accordion">
@@ -187,7 +195,6 @@ const today = new Date();
 const youbi = ["日","月","火","水","木","金","土"];
 const formatted = today.getFullYear()+"/"+String(today.getMonth()+1).padStart(2,"0")+"/"+String(today.getDate()).padStart(2,"0")+"("+youbi[today.getDay()]+")";
 document.getElementById("today").textContent = formatted;
-document.getElementById("todayMenu").textContent = formatted;
 
 // データ
 const excelData = [
@@ -278,6 +285,11 @@ const sideMenu=document.getElementById("sideMenu");
 menuToggle.addEventListener("click",()=>{
   sideMenu.classList.toggle("open");
   menuToggle.textContent=sideMenu.classList.contains("open")?"✕":"≡";
+  if(sideMenu.classList.contains("open")){
+    sideMenu.querySelector("header").appendChild(menuToggle);
+  } else {
+    document.querySelector("body > header").appendChild(menuToggle);
+  }
 });
 
 // アコーディオン
