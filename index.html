@@ -17,13 +17,14 @@ header .date { font-size: 0.9em; color: #666; }
   position: fixed;
   top: 10px;
   left: 10px;
-  font-size: 28px;
+  font-size: 1.8em; /* タイトルと同じサイズ */
   cursor: pointer;
   z-index: 1100; /* 常に最前面 */
   background: white;
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: 2px 8px;
   user-select: none;
+  line-height: 1;
 }
 
 /* サイドメニュー */
@@ -37,12 +38,32 @@ header .date { font-size: 0.9em; color: #666; }
   box-shadow: 2px 0 5px rgba(0,0,0,0.3);
   transition: left 0.3s ease;
   z-index: 1000;
-  padding: 10px;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 #sideMenu.open { left: 0; }
 
+/* サイドメニューヘッダー（✕ ボタン用） */
+#sideMenuHeader {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 10px;
+  background: #ddd;
+}
+#sideMenuHeader span {
+  font-size: 1.8em; /* タイトルと同じサイズ */
+  cursor: pointer;
+  user-select: none;
+}
+
 /* アコーディオン */
+#sideMenuContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  box-sizing: border-box;
+}
 .accordion-group { margin-bottom: 10px; }
 .accordion-header {
   font-weight: bold;
@@ -59,33 +80,6 @@ header .date { font-size: 0.9em; color: #666; }
   color: #333;
 }
 .accordion-content a:hover { text-decoration: underline; }
-
-/* テーブル共通 */
-table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
-th { background: #f8f8f8; }
-
-/* 検索結果 */
-.result-row { cursor: pointer; }
-.result-row:hover { background-color: #f0f0f0; }
-
-/* モーダル */
-#modalOverlay {
-  display: none;
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5); z-index: 999;
-  justify-content: center; align-items: center;
-}
-#modalContent {
-  background: white; padding: 20px; border-radius: 8px;
-  max-width: 90%; max-height: 80%; overflow-y: auto;
-  box-sizing: border-box;
-}
-#modalContent h3 { margin-top: 0; word-break: break-word; }
-#modalContent p { white-space: pre-wrap; word-break: break-word; }
-
-/* 更新履歴 */
-#historyTable { display: none; margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -95,18 +89,23 @@ th { background: #f8f8f8; }
 
 <!-- サイドメニュー -->
 <div id="sideMenu">
-  <div class="accordion-group">
-    <div class="accordion-header">グループ1</div>
-    <div class="accordion-content">
-      <a href="#">コンテンツ1</a>
-      <a href="#">コンテンツ2</a>
-    </div>
+  <div id="sideMenuHeader">
+    <span id="menuClose">✕</span>
   </div>
-  <div class="accordion-group">
-    <div class="accordion-header">グループ2</div>
-    <div class="accordion-content">
-      <a href="#">コンテンツ3</a>
-      <a href="#">コンテンツ4</a>
+  <div id="sideMenuContent">
+    <div class="accordion-group">
+      <div class="accordion-header">グループ1</div>
+      <div class="accordion-content">
+        <a href="#">コンテンツ1</a>
+        <a href="#">コンテンツ2</a>
+      </div>
+    </div>
+    <div class="accordion-group">
+      <div class="accordion-header">グループ2</div>
+      <div class="accordion-content">
+        <a href="#">コンテンツ3</a>
+        <a href="#">コンテンツ4</a>
+      </div>
     </div>
   </div>
 </div>
@@ -128,35 +127,8 @@ th { background: #f8f8f8; }
   <option value="OR">OR検索</option>
 </select>
 
-<h3>検索結果</h3>
-<div id="results"></div>
-
-<div id="modalOverlay">
-  <div id="modalContent">
-    <h3 id="modalTitle"></h3>
-    <p id="modalBody"></p>
-  </div>
-</div>
-
-<h4 id="toggleHistory">＃更新履歴（クリックで表示/非表示）</h4>
-<div id="historyTable">
-  <table>
-    <thead>
-      <tr>
-        <th>Ver</th>
-        <th>更新内容</th>
-        <th>更新者</th>
-        <th>承認者</th>
-        <th>更新日</th>
-      </tr>
-    </thead>
-    <tbody id="historyBody"></tbody>
-  </table>
-</div>
-
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-
 // 日付を表示
 const days = ["日","月","火","水","木","金","土"];
 const today = new Date();
@@ -169,11 +141,13 @@ document.getElementById("today").textContent = `${yyyy}/${mm}/${dd}(${day})`;
 // サイドメニュー処理
 const menuToggle = document.getElementById("menuToggle");
 const sideMenu = document.getElementById("sideMenu");
-let menuOpen = false;
+const menuClose = document.getElementById("menuClose");
+
 menuToggle.addEventListener("click", () => {
-  menuOpen = !menuOpen;
-  sideMenu.classList.toggle("open", menuOpen);
-  menuToggle.textContent = menuOpen ? "✕" : "≡";
+  sideMenu.classList.add("open");
+});
+menuClose.addEventListener("click", () => {
+  sideMenu.classList.remove("open");
 });
 
 // アコーディオン処理
@@ -183,7 +157,6 @@ document.querySelectorAll(".accordion-header").forEach(header => {
     content.style.display = content.style.display === "block" ? "none" : "block";
   });
 });
-
 });
 </script>
 
