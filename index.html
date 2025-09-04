@@ -13,11 +13,14 @@ header.mainHeader {
   margin-bottom: 20px;
   background: #4a90e2;
   color: white;
-  padding: 15px 10px;
+  height: 60px;           /* 高さ固定 */
+  line-height: 60px;      /* 垂直中央 */
   position: relative;
 }
-header.mainHeader h1 { margin: 0; font-size: 1.8em; }
-header.mainHeader .date { font-size: 0.9em; }
+
+/* ヘッダー内タイトル */
+header.mainHeader h1 { margin: 0; font-size: 1.8em; display:inline-block; vertical-align:middle; }
+header.mainHeader .date { font-size: 0.9em; margin-left:10px; vertical-align:middle; }
 
 /* ≡ / ✕ ボタン */
 #menuToggle {
@@ -28,13 +31,12 @@ header.mainHeader .date { font-size: 0.9em; }
   font-size: 1.8em;
   cursor: pointer;
   border: none;
-  border-radius: 4px;
-  padding: 2px 8px;
-  background: rgba(0,0,0,0.6); /* 半透明黒 */
+  background: rgba(0,0,0,0.6);
   color: white;
-  user-select: none;
+  padding: 2px 8px;
   line-height: 1;
   z-index: 1100;
+  user-select: none;
 }
 
 /* サイドメニュー */
@@ -52,16 +54,16 @@ header.mainHeader .date { font-size: 0.9em; }
 }
 #sideMenu.open { left: 0; }
 
-/* サイドメニュー内ヘッダー（高さをメインヘッダーと同じに統一） */
+/* サイドメニュー内ヘッダー */
 #sideMenu header {
   background: #4a90e2;
   color: white;
   text-align: center;
-  padding: 15px 10px;      /* メインヘッダーと同じ */
-  font-size: 1.8em;        /* メインヘッダーと同じ文字サイズ */
-  line-height: 1.2em;      /* 調整 */
-  box-sizing: border-box;
+  height: 60px;       /* メインヘッダーと同じ高さ */
+  line-height: 60px;  /* 垂直中央 */
+  font-size: 1.8em;
   margin: 0;
+  box-sizing: border-box;
 }
 
 /* アコーディオン */
@@ -265,7 +267,7 @@ document.addEventListener("click", async function(e){
   }
 });
 
-// メニュー開閉
+// メニュー開閉（≡ ⇄ ✕）
 const menuToggle=document.getElementById("menuToggle");
 const sideMenu=document.getElementById("sideMenu");
 menuToggle.addEventListener("click",()=>{
