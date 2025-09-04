@@ -13,16 +13,18 @@ header.mainHeader {
   margin-bottom: 20px;
   background: #4a90e2;
   color: white;
-  height: 60px;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 50px; /* 左右にスペース */
+  box-sizing: border-box;
 }
 
 /* タイトル＋日付コンテナ */
 header.mainHeader .titleContainer {
   display: inline-block;
   text-align: center;
-  line-height: normal;
-  vertical-align: middle;
 }
 header.mainHeader h1 { margin: 0; font-size: 1.8em; }
 header.mainHeader .date { font-size: 0.9em; margin-top: 2px; }
@@ -64,10 +66,9 @@ header.mainHeader .date { font-size: 0.9em; margin-top: 2px; }
   background: #4a90e2;
   color: white;
   text-align: center;
-  height: 60px; 
-  line-height: 60px;
   font-size: 1.8em;
   margin: 0;
+  padding: 10px;
   box-sizing: border-box;
 }
 
@@ -187,41 +188,40 @@ th { background: #f8f8f8; }
 </main>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function(){
 
-// 日付表示
-const days = ["日","月","火","水","木","金","土"];
-const today = new Date();
-document.getElementById("today").textContent =
+// 日付
+const days=["日","月","火","水","木","金","土"];
+const today=new Date();
+document.getElementById("today").textContent=
   `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,"0")}/${String(today.getDate()).padStart(2,"0")}(${days[today.getDay()]})`;
 
 // データ
-const excelData = [
-  {category:"メモ", category2:"URL／アカウント", subject:"参考リンク", body:`<a href="https://example.com" class="copyLink" data-copy="あああ">①</a> <a href="https://example.com" class="copyLink" data-copy="111">②</a>`},
-  {category:"世帯(個人)", category2:"生活関連", subject:"備忘録", body:"個人関連のメモです。"},
-  {category:"事業", category2:"経営", subject:"事業計画", body:"事業計画の初期草案はこちら。"}
+const excelData=[
+  {category:"メモ",category2:"URL／アカウント",subject:"参考リンク",body:`<a href="https://example.com" class="copyLink" data-copy="あああ">①</a> <a href="https://example.com" class="copyLink" data-copy="111">②</a>`},
+  {category:"世帯(個人)",category2:"生活関連",subject:"備忘録",body:"個人関連のメモです。"},
+  {category:"事業",category2:"経営",subject:"事業計画",body:"事業計画の初期草案はこちら。"}
 ];
-const updateHistory = [
+const updateHistory=[
   {ver:"1.0", content:"新規作成", author:"菅原", approver:"", date:"2025/08/29"},
   {ver:"1.1", content:"リンク追加", author:"菅原", approver:"上長A", date:"2025/09/01"}
 ];
 
 // モーダル
-const modalOverlay = document.getElementById("modalOverlay");
-const modalTitle = document.getElementById("modalTitle");
-const modalBody = document.getElementById("modalBody");
-function showModal(title, body){ modalTitle.textContent=title; modalBody.innerHTML=body; modalOverlay.style.display="flex"; }
+const modalOverlay=document.getElementById("modalOverlay");
+const modalTitle=document.getElementById("modalTitle");
+const modalBody=document.getElementById("modalBody");
+function showModal(title,body){ modalTitle.textContent=title; modalBody.innerHTML=body; modalOverlay.style.display="flex"; }
 function closeModal(){ modalOverlay.style.display="none"; }
-modalOverlay.addEventListener("click", e=>{if(e.target===modalOverlay) closeModal();});
+modalOverlay.addEventListener("click",e=>{if(e.target===modalOverlay) closeModal();});
 
 // 検索
-function performSearch() {
+function performSearch(){
   const cat=document.getElementById("categorySelect").value.trim();
   const keyword=document.getElementById("keyword").value.trim();
   const mode=document.getElementById("mode").value;
   const resultsDiv=document.getElementById("results");
   resultsDiv.innerHTML="";
-
   let keywords=keyword?keyword.split(/\s+/):[];
   const filtered=excelData.filter(item=>{
     if(cat && item.category.trim()!==cat) return false;
@@ -234,7 +234,6 @@ function performSearch() {
   const table=document.createElement("table");
   table.innerHTML=`<thead><tr><th>カテゴリー</th><th>詳細</th><th>件名</th></tr></thead>`;
   const tbody=document.createElement("tbody");
-
   filtered.forEach(item=>{
     const row=document.createElement("tr");
     row.className="result-row";
@@ -249,7 +248,7 @@ function performSearch() {
 // カテゴリ生成
 const categories=new Set(excelData.map(item=>item.category));
 const select=document.getElementById("categorySelect");
-categories.forEach(c=>{if(c.trim()){const opt=document.createElement("option");opt.value=c;opt.textContent=c;select.appendChild(opt);}});
+categories.forEach(c=>{if(c.trim()){const opt=document.createElement("option"); opt.value=c; opt.textContent=c; select.appendChild(opt);}});
 
 // 更新履歴
 const historyBody=document.getElementById("historyBody");
@@ -264,7 +263,7 @@ document.getElementById("toggleHistory").addEventListener("click",()=>{
 });
 
 // モーダル内リンククリック処理
-document.addEventListener("click", async function(e){
+document.addEventListener("click",async function(e){
   const link=e.target.closest("a.copyLink");
   if(link){
     e.preventDefault();
