@@ -19,7 +19,7 @@ header {
 header h1 { margin: 0; font-size: 1.8em; }
 header .date { font-size: 0.9em; }
 
-/* ≡ / ✕ ボタン（同じ場所で切替） */
+/* ≡ / ✕ ボタン（透過黒＋白文字） */
 #menuToggle {
   position: absolute;
   top: 50%;
@@ -27,9 +27,11 @@ header .date { font-size: 0.9em; }
   transform: translateY(-50%);
   font-size: 1.8em;
   cursor: pointer;
-  background: transparent;
-  border: none;
-  color: white;
+  border: 2px solid black;
+  border-radius: 4px;
+  padding: 2px 8px;
+  background: rgba(0,0,0,0.6); /* 半透明の黒 */
+  color: white; /* 文字は白 */
   user-select: none;
   line-height: 1;
   z-index: 1100;
