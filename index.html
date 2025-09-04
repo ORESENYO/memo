@@ -5,104 +5,120 @@
 <title>試作品</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { font-family: sans-serif; margin: 0; padding: 0; }
-
-/* メインヘッダー */
-header {
-  background: #4a90e2;
-  color: white;
-  text-align: center;
-  padding: 15px 20px 5px;
-  position: relative;
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
 }
-header h2 { margin: 0; font-size: 1.5em; }
-header p { margin: 5px 0 0; font-size: 0.9em; }
 
-/* ハンバーガーボタン */
-#menuToggle {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
+/* ヘッダー */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #444;
+  color: white;
+  padding: 0 15px;
+  height: 60px; /* 高さを固定 */
+  box-sizing: border-box;
+}
+header h1 {
+  margin: 0;
+  font-size: 1.2em;
+}
+header .date {
+  font-size: 0.9em;
+}
+.menu-toggle {
+  font-size: 1.5em;
   background: rgba(0,0,0,0.7);
   color: white;
-  font-size: 1.5em;
   border: none;
   cursor: pointer;
   padding: 5px 10px;
-  z-index: 1001;
+  border-radius: 4px;
 }
 
 /* サイドメニュー */
 #sideMenu {
   position: fixed;
-  top: 0; left: -260px;
-  width: 250px;
+  top: 0;
+  left: -260px;
+  width: 260px;
   height: 100%;
-  background: #f9f9f9;
+  background: #f4f4f4;
   box-shadow: 2px 0 5px rgba(0,0,0,0.3);
   transition: left 0.3s ease;
-  z-index: 1000;
   display: flex;
   flex-direction: column;
 }
-#sideMenu.open { left: 0; }
-
-/* サイドメニュー内ヘッダー */
+#sideMenu.open {
+  left: 0;
+}
 #sideMenu header {
-  background: #4a90e2;
+  background: #444;
   color: white;
-  text-align: center;
-  padding: 15px 20px 5px;
-  flex-shrink: 0;
-  position: relative;
+  height: 60px; /* メインヘッダーと統一 */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 15px;
+  box-sizing: border-box;
 }
-#sideMenu header h2 { margin: 0; font-size: 1.5em; }
-
-/* サイドメニュー用の閉じるボタン */
-#sideMenu.open #menuToggle {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-/* サイドメニュー内コンテンツ */
-#menuContent {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 10px;
+#sideMenu .menu-toggle {
+  margin-right: auto; /* 左寄せ */
 }
 
 /* アコーディオン */
-.accordion { border-top: 1px solid #ccc; }
-.accordion-item { border-bottom: 1px solid #ccc; }
+.accordion {
+  width: 100%;
+  border-top: 1px solid #ccc;
+}
+.accordion-item {
+  border-bottom: 1px solid #ccc;
+}
 .accordion-header {
   padding: 10px;
-  background: #eee;
   cursor: pointer;
+  background: #eee;
 }
 .accordion-content {
   display: none;
   padding: 10px;
-  background: #fafafa;
 }
-.accordion-content a { display: block; padding: 5px 0; }
+.accordion-content.open {
+  display: block;
+}
 
-/* テーブル共通 */
-table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
-th { background: #f8f8f8; }
+/* 検索部分 */
+.container {
+  padding: 20px;
+}
+input, select {
+  margin: 5px;
+  padding: 5px;
+  font-size: 1em;
+}
 
-/* 検索結果 */
-.result-row { cursor: pointer; }
-.result-row:hover { background-color: #f0f0f0; }
+/* テーブル */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 15px;
+}
+table, th, td {
+  border: 1px solid #ccc;
+}
+th, td {
+  padding: 8px;
+  text-align: left;
+}
 
 /* モーダル */
 #modalOverlay {
   display: none;
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5); z-index: 1000;
+  background: rgba(0,0,0,0.5); z-index: 999;
   justify-content: center; align-items: center;
 }
 #modalContent {
@@ -110,197 +126,171 @@ th { background: #f8f8f8; }
   max-width: 90%; max-height: 80%; overflow-y: auto;
   box-sizing: border-box;
 }
-#modalContent h3 { margin-top: 0; word-break: break-word; }
+#modalContent h3 { margin-top: 0; }
 #modalContent p { white-space: pre-wrap; word-break: break-word; }
-
-/* 更新履歴 */
-#historyTable { display: none; margin-top: 10px; }
 </style>
 </head>
 <body>
 
+<!-- メインヘッダー -->
 <header>
-  <button id="menuToggle">≡</button>
-  <h2>試作品</h2>
-  <p id="today"></p>
+  <button id="menuToggle" class="menu-toggle">≡</button>
+  <h1>試作品</h1>
+  <div class="date" id="currentDate"></div>
 </header>
 
 <!-- サイドメニュー -->
 <div id="sideMenu">
   <header>
-    <h2>メニュー</h2>
+    <button id="menuToggleSide" class="menu-toggle">×</button>
+    <h1>メニュー</h1>
   </header>
-  <div id="menuContent">
-    <div class="accordion">
-      <div class="accordion-item">
-        <div class="accordion-header">グループ1</div>
-        <div class="accordion-content">
-          <a href="#">コンテンツ1</a>
-          <a href="#">コンテンツ2</a>
-        </div>
+  <div class="accordion">
+    <div class="accordion-item">
+      <div class="accordion-header">検索</div>
+      <div class="accordion-content">
+        <label>カテゴリー：</label>
+        <select id="categorySelect"><option value="">すべて</option></select><br>
+        <label>検索：</label>
+        <input type="text" id="keyword" placeholder="キーワードを入力"><br>
+        <select id="mode">
+          <option value="AND">AND検索</option>
+          <option value="OR">OR検索</option>
+        </select>
       </div>
-      <div class="accordion-item">
-        <div class="accordion-header">グループ2</div>
-        <div class="accordion-content">
-          <a href="#">コンテンツ3</a>
-          <a href="#">コンテンツ4</a>
-        </div>
+    </div>
+    <div class="accordion-item">
+      <div class="accordion-header">更新履歴</div>
+      <div class="accordion-content">
+        <table>
+          <thead><tr><th>Ver</th><th>更新内容</th><th>更新者</th><th>承認者</th><th>更新日</th></tr></thead>
+          <tbody>
+            <tr><td>1.0</td><td>新規作成</td><td>菅原</td><td>-</td><td>2025/08/29</td></tr>
+            <tr><td>1.1</td><td>検索機能改善</td><td>菅原</td><td>-</td><td>2025/09/05</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 </div>
 
-<!-- 検索 -->
-<div style="padding:20px;">
-  <label>カテゴリー：</label>
-  <select id="categorySelect"><option value="">すべて</option></select>
-  <label>検索：</label>
-  <input type="text" id="keyword" placeholder="キーワードを入力">
-  <select id="mode">
-    <option value="AND">AND検索</option>
-    <option value="OR">OR検索</option>
-  </select>
-
+<!-- メインコンテンツ -->
+<div class="container">
   <h3>検索結果</h3>
-  <div id="results"></div>
+  <table id="results">
+    <thead><tr><th>カテゴリー</th><th>詳細</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
 
-  <div id="modalOverlay">
-    <div id="modalContent">
-      <h3 id="modalTitle"></h3>
-      <p id="modalBody"></p>
-    </div>
-  </div>
-
-  <h4 id="toggleHistory">＃更新履歴（クリックで表示/非表示）</h4>
-  <div id="historyTable">
-    <table>
-      <thead>
-        <tr>
-          <th>Ver</th>
-          <th>更新内容</th>
-          <th>更新者</th>
-          <th>承認者</th>
-          <th>更新日</th>
-        </tr>
-      </thead>
-      <tbody id="historyBody"></tbody>
-    </table>
+<!-- モーダル -->
+<div id="modalOverlay">
+  <div id="modalContent">
+    <h3 id="modalTitle"></h3>
+    <p id="modalBody"></p>
   </div>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-// 今日の日付
-const today = new Date();
-const youbi = ["日","月","火","水","木","金","土"];
-const formatted = today.getFullYear()+"/"+String(today.getMonth()+1).padStart(2,"0")+"/"+String(today.getDate()).padStart(2,"0")+"("+youbi[today.getDay()]+")";
-document.getElementById("today").textContent = formatted;
+  // 日付表示
+  const today = new Date();
+  document.getElementById("currentDate").textContent =
+    today.getFullYear() + "/" + (today.getMonth()+1) + "/" + today.getDate();
 
-// データ
-const excelData = [
-  {category:"メモ", category2:"URL／アカウント", subject:"参考リンク", body:`<a href="https://example.com" class="copyLink" data-copy="あああ">①</a><br><a href="https://example.com" class="copyLink" data-copy="111">②</a>`},
-  {category:"世帯(個人)", category2:"生活関連", subject:"備忘録", body:"個人関連のメモです。"},
-  {category:"事業", category2:"経営", subject:"事業計画", body:"事業計画の初期草案はこちら。"}
-];
-const updateHistory = [
-  {ver:"1.0", content:"新規作成", author:"菅原", approver:"", date:"2025/08/29"},
-  {ver:"1.1", content:"リンク追加", author:"菅原", approver:"上長A", date:"2025/09/01"}
-];
+  // メニュー開閉
+  const sideMenu = document.getElementById("sideMenu");
+  const menuToggle = document.getElementById("menuToggle");
+  const menuToggleSide = document.getElementById("menuToggleSide");
 
-// モーダル
-const modalOverlay=document.getElementById("modalOverlay");
-const modalTitle=document.getElementById("modalTitle");
-const modalBody=document.getElementById("modalBody");
-function showModal(title,body){ modalTitle.textContent=title; modalBody.innerHTML=body; modalOverlay.style.display="flex"; }
-function closeModal(){ modalOverlay.style.display="none"; }
-modalOverlay.addEventListener("click",e=>{ if(e.target===modalOverlay) closeModal(); });
-
-// 検索
-function performSearch(){
-  const cat=document.getElementById("categorySelect").value.trim();
-  const keyword=document.getElementById("keyword").value.trim();
-  const mode=document.getElementById("mode").value;
-  const resultsDiv=document.getElementById("results");
-  resultsDiv.innerHTML="";
-  let keywords=keyword?keyword.split(/\s+/):[];
-  const filtered=excelData.filter(item=>{
-    if(cat && item.category.trim()!==cat) return false;
-    if(!keywords.length) return true;
-    const text=(item.category2+" "+item.subject+" "+item.body).toLowerCase();
-    if(mode==="AND") return keywords.every(k=>text.includes(k.toLowerCase()));
-    else return keywords.some(k=>text.includes(k.toLowerCase()));
-  });
-  if(!filtered.length){ resultsDiv.textContent="該当なし"; return; }
-  const table=document.createElement("table");
-  table.innerHTML=`<thead><tr><th>カテゴリー</th><th>詳細</th><th>件名</th></tr></thead>`;
-  const tbody=document.createElement("tbody");
-  filtered.forEach(item=>{
-    const row=document.createElement("tr");
-    row.className="result-row";
-    row.innerHTML=`<td>${item.category}</td><td>${item.category2}</td><td>${item.subject}</td>`;
-    row.addEventListener("click",()=>{ showModal(item.subject,item.body); });
-    tbody.appendChild(row);
-  });
-  table.appendChild(tbody);
-  resultsDiv.appendChild(table);
-}
-
-// カテゴリ生成
-const categories=new Set(excelData.map(item=>item.category));
-const select=document.getElementById("categorySelect");
-categories.forEach(c=>{ if(c.trim()){ const opt=document.createElement("option"); opt.value=c; opt.textContent=c; select.appendChild(opt);} });
-
-// 更新履歴
-const historyBody=document.getElementById("historyBody");
-updateHistory.forEach(h=>{
-  const row=document.createElement("tr");
-  row.innerHTML=`<td>${h.ver}</td><td>${h.content}</td><td>${h.author}</td><td>${h.approver}</td><td>${h.date}</td>`;
-  historyBody.appendChild(row);
-});
-document.getElementById("toggleHistory").addEventListener("click",()=>{
-  const tbl=document.getElementById("historyTable");
-  tbl.style.display=(tbl.style.display==="none"||tbl.style.display==="")?"block":"none";
-});
-
-// コピー処理
-document.addEventListener("click",async function(e){
-  const link=e.target.closest("a.copyLink");
-  if(link){
-    e.preventDefault();
-    const textToCopy=link.dataset.copy||"";
-    try{ await navigator.clipboard.writeText(textToCopy);}catch(err){ console.error("コピー失敗",err);}
-    window.open(link.href,"_blank");
+  function toggleMenu() {
+    sideMenu.classList.toggle("open");
   }
-});
+  menuToggle.addEventListener("click", toggleMenu);
+  menuToggleSide.addEventListener("click", toggleMenu);
 
-// 検索イベント
-document.getElementById("keyword").addEventListener("input",performSearch);
-document.getElementById("categorySelect").addEventListener("change",performSearch);
-document.getElementById("mode").addEventListener("change",performSearch);
-performSearch();
-
-// サイドメニュー制御
-const menuToggle=document.getElementById("menuToggle");
-const sideMenu=document.getElementById("sideMenu");
-menuToggle.addEventListener("click",()=>{
-  sideMenu.classList.toggle("open");
-  menuToggle.textContent=sideMenu.classList.contains("open")?"✕":"≡";
-  if(sideMenu.classList.contains("open")){
-    sideMenu.querySelector("header").appendChild(menuToggle);
-  } else {
-    document.querySelector("body > header").appendChild(menuToggle);
-  }
-});
-
-// アコーディオン
-document.querySelectorAll(".accordion-header").forEach(header=>{
-  header.addEventListener("click",()=>{
-    const content=header.nextElementSibling;
-    content.style.display=(content.style.display==="block")?"none":"block";
+  // アコーディオン
+  document.querySelectorAll(".accordion-header").forEach(header => {
+    header.addEventListener("click", () => {
+      const content = header.nextElementSibling;
+      content.classList.toggle("open");
+    });
   });
-});
+
+  // データ
+  const excelData = [
+    {category: "メモ", category2: "URL／アカウント", body: `こちらは<a href="https://example.com" class="copyLink" data-copy="あああ">リンク①</a>です。\n利用してください。\n参考にどうぞ。`},
+    {category: "世帯(個人)", category2: "連絡先", body: `テスト用の<a href="https://example.org" class="copyLink" data-copy="111">リンク②</a>です。\n詳細をご確認ください。\nよろしくお願いします。`}
+  ];
+
+  const resultsTbody = document.querySelector("#results tbody");
+  const modalOverlay = document.getElementById("modalOverlay");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalBody = document.getElementById("modalBody");
+
+  function showModal(title, body) {
+    modalTitle.textContent = title;
+    modalBody.innerHTML = body;
+    modalOverlay.style.display = "flex";
+  }
+  modalOverlay.addEventListener("click", e => {
+    if (e.target === modalOverlay) modalOverlay.style.display = "none";
+  });
+
+  function performSearch() {
+    const cat = document.getElementById("categorySelect").value.trim();
+    const keyword = document.getElementById("keyword").value.trim();
+    const mode = document.getElementById("mode").value;
+    resultsTbody.innerHTML = "";
+
+    let keywords = keyword ? keyword.split(/\s+/) : [];
+    const filtered = excelData.filter(item => {
+      if (cat && item.category.trim() !== cat) return false;
+      if (keywords.length === 0) return true;
+      const text = (item.category2 + " " + item.body).toLowerCase();
+      if (mode === "AND") return keywords.every(k => text.includes(k.toLowerCase()));
+      else return keywords.some(k => text.includes(k.toLowerCase()));
+    });
+
+    if (filtered.length === 0) {
+      resultsTbody.innerHTML = `<tr><td colspan="2">該当なし</td></tr>`;
+      return;
+    }
+
+    filtered.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${item.category}</td><td>${item.category2}</td>`;
+      tr.addEventListener("click", () => showModal(item.category, item.body));
+      resultsTbody.appendChild(tr);
+    });
+  }
+
+  // カテゴリー選択肢生成
+  const categories = new Set(excelData.map(item => item.category));
+  const select = document.getElementById("categorySelect");
+  categories.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    select.appendChild(opt);
+  });
+
+  document.getElementById("keyword").addEventListener("input", performSearch);
+  document.getElementById("categorySelect").addEventListener("change", performSearch);
+  document.getElementById("mode").addEventListener("change", performSearch);
+
+  performSearch();
+
+  // コピー付きリンク処理
+  document.addEventListener("click", function(e) {
+    if (e.target.classList.contains("copyLink")) {
+      e.preventDefault();
+      const textToCopy = e.target.getAttribute("data-copy");
+      navigator.clipboard.writeText(textToCopy);
+      window.open(e.target.href, "_blank");
+    }
+  });
 });
 </script>
-
 </body>
 </html>
