@@ -11,7 +11,7 @@ body { font-family: sans-serif; margin: 0; }
 header {
   text-align: center;
   margin-bottom: 20px;
-  background: #4a90e2; /* ← 好きな色に変えられます */
+  background: #4a90e2;
   color: white;
   padding: 15px 10px;
   position: relative;
@@ -19,7 +19,7 @@ header {
 header h1 { margin: 0; font-size: 1.8em; }
 header .date { font-size: 0.9em; }
 
-/* ≡ / ✕ ボタン（透過黒＋白文字） */
+/* ≡ / ✕ ボタン */
 #menuToggle {
   position: absolute;
   top: 50%;
@@ -27,11 +27,11 @@ header .date { font-size: 0.9em; }
   transform: translateY(-50%);
   font-size: 1.8em;
   cursor: pointer;
-  border: 2px solid black;
+  border: none;
   border-radius: 4px;
   padding: 2px 8px;
-  background: rgba(0,0,0,0.6); /* 半透明の黒 */
-  color: white; /* 文字は白 */
+  background: rgba(0,0,0,0.6); /* 半透明黒 */
+  color: white;
   user-select: none;
   line-height: 1;
   z-index: 1100;
@@ -41,36 +41,71 @@ header .date { font-size: 0.9em; }
 #sideMenu {
   position: fixed;
   top: 0;
-  left: -250px;
-  width: 250px;
+  left: -260px;
+  width: 260px;
   height: 100%;
   background: #f8f8f8;
   box-shadow: 2px 0 5px rgba(0,0,0,0.3);
   transition: left 0.3s ease;
   z-index: 1000;
-  padding-top: 50px;
+  overflow-y: auto;
 }
 #sideMenu.open { left: 0; }
 
+/* サイドメニュー内ヘッダー */
+#sideMenu header {
+  background: #4a90e2;
+  color: white;
+  text-align: center;
+  padding: 12px;
+  margin: 0;
+  font-size: 1.2em;
+}
+
 /* アコーディオン */
-.accordion-group { margin-bottom: 10px; }
+.accordion-group { margin: 0; }
 .accordion-header {
   font-weight: bold;
   cursor: pointer;
-  padding: 6px;
+  padding: 8px;
   background: #ddd;
-  border-radius: 4px;
+  border-bottom: 1px solid #ccc;
 }
-.accordion-content { display: none; margin-left: 15px; }
+.accordion-content { display: none; padding-left: 20px; }
 .accordion-content a {
   display: block;
-  padding: 4px 0;
+  padding: 6px 0;
   text-decoration: none;
   color: #333;
 }
 .accordion-content a:hover { text-decoration: underline; }
 
 main { padding: 20px; }
+
+/* テーブル */
+table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+th { background: #f8f8f8; }
+.result-row { cursor: pointer; }
+.result-row:hover { background-color: #f0f0f0; }
+
+/* モーダル */
+#modalOverlay {
+  display: none;
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); z-index: 999;
+  justify-content: center; align-items: center;
+}
+#modalContent {
+  background: white; padding: 20px; border-radius: 8px;
+  max-width: 90%; max-height: 80%; overflow-y: auto;
+  box-sizing: border-box;
+}
+#modalContent h3 { margin-top: 0; word-break: break-word; }
+#modalContent p { white-space: pre-wrap; word-break: break-word; }
+
+/* 更新履歴 */
+#historyTable { display: none; margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -83,6 +118,7 @@ main { padding: 20px; }
 
 <!-- サイドメニュー -->
 <div id="sideMenu">
+  <header>メニュー</header>
   <div class="accordion-group">
     <div class="accordion-header">グループ1</div>
     <div class="accordion-content">
@@ -111,32 +147,152 @@ main { padding: 20px; }
     <option value="AND">AND検索</option>
     <option value="OR">OR検索</option>
   </select>
+
+  <h3>検索結果</h3>
+  <div id="results"></div>
+
+  <div id="modalOverlay">
+    <div id="modalContent">
+      <h3 id="modalTitle"></h3>
+      <p id="modalBody"></p>
+    </div>
+  </div>
+
+  <h4 id="toggleHistory">＃更新履歴（クリックで表示/非表示）</h4>
+  <div id="historyTable">
+    <table>
+      <thead>
+        <tr>
+          <th>Ver</th>
+          <th>更新内容</th>
+          <th>更新者</th>
+          <th>承認者</th>
+          <th>更新日</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </div>
 </main>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-// 日付を表示
+
+// データ
+const excelData = [
+  {
+    category: "メモ",
+    category2: "URL／アカウント",
+    subject: "参考リンク",
+    body: `<a href="https://example.com" class="copyLink" data-copy="あああ">①</a>
+           <a href="https://example.com" class="copyLink" data-copy="111">②</a>`
+  },
+  { category: "世帯(個人)", category2: "生活関連", subject: "備忘録", body: "個人関連のメモです。" },
+  { category: "事業", category2: "経営", subject: "事業計画", body: "事業計画の初期草案はこちら。" }
+];
+
+// 更新履歴
+const updateHistory = [
+  {ver:"1.0", content:"新規作成", author:"菅原", approver:"", date:"2025/08/29"},
+  {ver:"1.1", content:"リンク追加", author:"菅原", approver:"上長A", date:"2025/09/01"}
+];
+
+// 日付
 const days = ["日","月","火","水","木","金","土"];
 const today = new Date();
 document.getElementById("today").textContent =
   `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,"0")}/${String(today.getDate()).padStart(2,"0")}(${days[today.getDay()]})`;
 
-// メニュー開閉処理（ワンボタン方式）
+// モーダル
+const modalOverlay = document.getElementById("modalOverlay");
+const modalTitle = document.getElementById("modalTitle");
+const modalBody = document.getElementById("modalBody");
+function showModal(title, body){ modalTitle.textContent = title; modalBody.innerHTML = body; modalOverlay.style.display = "flex"; }
+function closeModal(){ modalOverlay.style.display = "none"; }
+modalOverlay.addEventListener("click", e => { if(e.target === modalOverlay) closeModal(); });
+
+// 検索処理
+function performSearch() {
+  const cat = document.getElementById("categorySelect").value.trim();
+  const keyword = document.getElementById("keyword").value.trim();
+  const mode = document.getElementById("mode").value;
+  const resultsDiv = document.getElementById("results");
+  resultsDiv.innerHTML = "";
+
+  let keywords = keyword ? keyword.split(/\s+/) : [];
+
+  const filtered = excelData.filter(item => {
+    if (cat && item.category.trim() !== cat) return false;
+    if (!keywords.length) return true;
+    const text = (item.category2 + " " + item.subject + " " + item.body).toLowerCase();
+    if (mode === "AND") return keywords.every(k => text.includes(k.toLowerCase()));
+    else return keywords.some(k => text.includes(k.toLowerCase()));
+  });
+
+  if (!filtered.length) { resultsDiv.textContent = "該当なし"; return; }
+
+  const table = document.createElement("table");
+  table.innerHTML = `<thead><tr><th>カテゴリー</th><th>詳細</th><th>件名</th></tr></thead>`;
+  const tbody = document.createElement("tbody");
+
+  filtered.forEach(item => {
+    const row = document.createElement("tr");
+    row.className = "result-row";
+    row.innerHTML = `<td>${item.category}</td><td>${item.category2}</td><td>${item.subject}</td>`;
+    row.addEventListener("click", () => { showModal(item.subject, item.body); });
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+  resultsDiv.appendChild(table);
+}
+
+// カテゴリ生成
+const categories = new Set(excelData.map(item => item.category));
+const select = document.getElementById("categorySelect");
+categories.forEach(c => { if(c.trim()) { const opt=document.createElement("option"); opt.value=c; opt.textContent=c; select.appendChild(opt); } });
+
+// 更新履歴生成
+const historyBody = document.getElementById("historyBody");
+updateHistory.forEach(h => {
+  const row = document.createElement("tr");
+  row.innerHTML = `<td>${h.ver}</td><td>${h.content}</td><td>${h.author}</td><td>${h.approver}</td><td>${h.date}</td>`;
+  historyBody.appendChild(row);
+});
+document.getElementById("toggleHistory").addEventListener("click", () => {
+  const tbl = document.getElementById("historyTable");
+  tbl.style.display = (tbl.style.display==="none"||tbl.style.display==="") ? "block" : "none";
+});
+
+// モーダル内リンククリック処理
+document.addEventListener("click", async function(e){
+  const link = e.target.closest("a.copyLink");
+  if(link){
+    e.preventDefault();
+    const textToCopy = link.dataset.copy || "";
+    try { await navigator.clipboard.writeText(textToCopy); } catch(err){}
+    window.open(link.href,"_blank");
+  }
+});
+
+// メニュー開閉
 const menuToggle = document.getElementById("menuToggle");
 const sideMenu = document.getElementById("sideMenu");
-
 menuToggle.addEventListener("click", () => {
   sideMenu.classList.toggle("open");
   menuToggle.textContent = sideMenu.classList.contains("open") ? "✕" : "≡";
 });
 
-// アコーディオン処理
+// アコーディオン
 document.querySelectorAll(".accordion-header").forEach(header => {
   header.addEventListener("click", () => {
     const content = header.nextElementSibling;
     content.style.display = content.style.display === "block" ? "none" : "block";
   });
 });
+
+// 初期表示
+performSearch();
+
 });
 </script>
 
