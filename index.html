@@ -13,14 +13,19 @@ header.mainHeader {
   margin-bottom: 20px;
   background: #4a90e2;
   color: white;
-  height: 60px;           /* 高さ固定 */
-  line-height: 60px;      /* 垂直中央 */
+  height: 60px;
   position: relative;
 }
 
-/* ヘッダー内タイトル */
-header.mainHeader h1 { margin: 0; font-size: 1.8em; display:inline-block; vertical-align:middle; }
-header.mainHeader .date { font-size: 0.9em; margin-left:10px; vertical-align:middle; }
+/* タイトル＋日付コンテナ */
+header.mainHeader .titleContainer {
+  display: inline-block;
+  text-align: center;
+  line-height: normal;
+  vertical-align: middle;
+}
+header.mainHeader h1 { margin: 0; font-size: 1.8em; }
+header.mainHeader .date { font-size: 0.9em; margin-top: 2px; }
 
 /* ≡ / ✕ ボタン */
 #menuToggle {
@@ -59,8 +64,8 @@ header.mainHeader .date { font-size: 0.9em; margin-left:10px; vertical-align:mid
   background: #4a90e2;
   color: white;
   text-align: center;
-  height: 60px;       /* メインヘッダーと同じ高さ */
-  line-height: 60px;  /* 垂直中央 */
+  height: 60px; 
+  line-height: 60px;
   font-size: 1.8em;
   margin: 0;
   box-sizing: border-box;
@@ -116,8 +121,10 @@ th { background: #f8f8f8; }
 
 <header class="mainHeader">
   <button id="menuToggle">≡</button>
-  <h1>試作品</h1>
-  <div class="date" id="today"></div>
+  <div class="titleContainer">
+    <h1>試作品</h1>
+    <div class="date" id="today"></div>
+  </div>
 </header>
 
 <!-- サイドメニュー -->
