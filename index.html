@@ -5,59 +5,45 @@
 <title>試作品</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { font-family: sans-serif; margin: 0; }
+body { font-family: sans-serif; margin: 0; padding: 0; }
 
 /* メインヘッダー */
-header.mainHeader {
-  text-align: center;
-  margin-bottom: 20px;
+header {
   background: #4a90e2;
   color: white;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 50px; /* 左右にスペース */
-  box-sizing: border-box;
-}
-
-/* タイトル＋日付コンテナ */
-header.mainHeader .titleContainer {
-  display: inline-block;
   text-align: center;
+  padding: 15px 20px 5px;
+  position: relative;
 }
-header.mainHeader h1 { margin: 0; font-size: 1.8em; }
-header.mainHeader .date { font-size: 0.9em; margin-top: 2px; }
+header h2 { margin: 0; font-size: 1.5em; }
+header p { margin: 5px 0 0; font-size: 0.9em; }
 
-/* ≡ / ✕ ボタン */
+/* ハンバーガーボタン */
 #menuToggle {
   position: absolute;
-  top: 50%;
   left: 10px;
+  top: 50%;
   transform: translateY(-50%);
-  font-size: 1.8em;
-  cursor: pointer;
-  border: none;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.7);
   color: white;
-  padding: 2px 8px;
-  line-height: 1;
-  z-index: 1100;
-  user-select: none;
+  font-size: 1.5em;
+  border: none;
+  cursor: pointer;
+  padding: 5px 10px;
 }
 
 /* サイドメニュー */
 #sideMenu {
   position: fixed;
-  top: 0;
-  left: -260px;
-  width: 260px;
+  top: 0; left: -260px;
+  width: 250px;
   height: 100%;
-  background: #f8f8f8;
+  background: #f9f9f9;
   box-shadow: 2px 0 5px rgba(0,0,0,0.3);
   transition: left 0.3s ease;
-  z-index: 1000;
-  overflow-y: auto;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
 }
 #sideMenu.open { left: 0; }
 
@@ -66,36 +52,40 @@ header.mainHeader .date { font-size: 0.9em; margin-top: 2px; }
   background: #4a90e2;
   color: white;
   text-align: center;
-  font-size: 1.8em;
-  margin: 0;
+  padding: 15px 20px 5px;
+  flex-shrink: 0;
+}
+#sideMenu header h2 { margin: 0; font-size: 1.5em; }
+#sideMenu header p { margin: 5px 0 0; font-size: 0.9em; }
+
+/* サイドメニュー内コンテンツ */
+#menuContent {
+  flex-grow: 1;
+  overflow-y: auto;
   padding: 10px;
-  box-sizing: border-box;
 }
 
 /* アコーディオン */
-.accordion-group { margin: 0; }
+.accordion { border-top: 1px solid #ccc; }
+.accordion-item { border-bottom: 1px solid #ccc; }
 .accordion-header {
-  font-weight: bold;
+  padding: 10px;
+  background: #eee;
   cursor: pointer;
-  padding: 8px;
-  background: #ddd;
-  border-bottom: 1px solid #ccc;
 }
-.accordion-content { display: none; padding-left: 20px; }
-.accordion-content a {
-  display: block;
-  padding: 6px 0;
-  text-decoration: none;
-  color: #333;
+.accordion-content {
+  display: none;
+  padding: 10px;
+  background: #fafafa;
 }
-.accordion-content a:hover { text-decoration: underline; }
+.accordion-content a { display: block; padding: 5px 0; }
 
-main { padding: 20px; }
-
-/* テーブル */
+/* テーブル共通 */
 table { border-collapse: collapse; width: 100%; margin-top: 10px; }
 th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
 th { background: #f8f8f8; }
+
+/* 検索結果 */
 .result-row { cursor: pointer; }
 .result-row:hover { background-color: #f0f0f0; }
 
@@ -103,7 +93,7 @@ th { background: #f8f8f8; }
 #modalOverlay {
   display: none;
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5); z-index: 999;
+  background: rgba(0,0,0,0.5); z-index: 1000;
   justify-content: center; align-items: center;
 }
 #modalContent {
@@ -120,39 +110,42 @@ th { background: #f8f8f8; }
 </head>
 <body>
 
-<header class="mainHeader">
+<header>
   <button id="menuToggle">≡</button>
-  <div class="titleContainer">
-    <h1>試作品</h1>
-    <div class="date" id="today"></div>
-  </div>
+  <h2>試作品</h2>
+  <p id="today"></p>
 </header>
 
 <!-- サイドメニュー -->
 <div id="sideMenu">
-  <header>メニュー</header>
-  <div class="accordion-group">
-    <div class="accordion-header">グループ1</div>
-    <div class="accordion-content">
-      <a href="#">コンテンツ1</a>
-      <a href="#">コンテンツ2</a>
-    </div>
-  </div>
-  <div class="accordion-group">
-    <div class="accordion-header">グループ2</div>
-    <div class="accordion-content">
-      <a href="#">コンテンツ3</a>
-      <a href="#">コンテンツ4</a>
+  <header>
+    <h2>メニュー</h2>
+    <p id="todayMenu"></p>
+  </header>
+  <div id="menuContent">
+    <div class="accordion">
+      <div class="accordion-item">
+        <div class="accordion-header">グループ1</div>
+        <div class="accordion-content">
+          <a href="#">コンテンツ1</a>
+          <a href="#">コンテンツ2</a>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <div class="accordion-header">グループ2</div>
+        <div class="accordion-content">
+          <a href="#">コンテンツ3</a>
+          <a href="#">コンテンツ4</a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<main>
+<!-- 検索 -->
+<div style="padding:20px;">
   <label>カテゴリー：</label>
-  <select id="categorySelect">
-    <option value="">すべて</option>
-  </select>
-
+  <select id="categorySelect"><option value="">すべて</option></select>
   <label>検索：</label>
   <input type="text" id="keyword" placeholder="キーワードを入力">
   <select id="mode">
@@ -185,24 +178,24 @@ th { background: #f8f8f8; }
       <tbody id="historyBody"></tbody>
     </table>
   </div>
-</main>
+</div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function(){
-
-// 日付
-const days=["日","月","火","水","木","金","土"];
-const today=new Date();
-document.getElementById("today").textContent=
-  `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,"0")}/${String(today.getDate()).padStart(2,"0")}(${days[today.getDay()]})`;
+document.addEventListener("DOMContentLoaded", function() {
+// 今日の日付
+const today = new Date();
+const youbi = ["日","月","火","水","木","金","土"];
+const formatted = today.getFullYear()+"/"+String(today.getMonth()+1).padStart(2,"0")+"/"+String(today.getDate()).padStart(2,"0")+"("+youbi[today.getDay()]+")";
+document.getElementById("today").textContent = formatted;
+document.getElementById("todayMenu").textContent = formatted;
 
 // データ
-const excelData=[
-  {category:"メモ",category2:"URL／アカウント",subject:"参考リンク",body:`<a href="https://example.com" class="copyLink" data-copy="あああ">①</a> <a href="https://example.com" class="copyLink" data-copy="111">②</a>`},
-  {category:"世帯(個人)",category2:"生活関連",subject:"備忘録",body:"個人関連のメモです。"},
-  {category:"事業",category2:"経営",subject:"事業計画",body:"事業計画の初期草案はこちら。"}
+const excelData = [
+  {category:"メモ", category2:"URL／アカウント", subject:"参考リンク", body:`<a href="https://example.com" class="copyLink" data-copy="あああ">①</a><br><a href="https://example.com" class="copyLink" data-copy="111">②</a>`},
+  {category:"世帯(個人)", category2:"生活関連", subject:"備忘録", body:"個人関連のメモです。"},
+  {category:"事業", category2:"経営", subject:"事業計画", body:"事業計画の初期草案はこちら。"}
 ];
-const updateHistory=[
+const updateHistory = [
   {ver:"1.0", content:"新規作成", author:"菅原", approver:"", date:"2025/08/29"},
   {ver:"1.1", content:"リンク追加", author:"菅原", approver:"上長A", date:"2025/09/01"}
 ];
@@ -213,7 +206,7 @@ const modalTitle=document.getElementById("modalTitle");
 const modalBody=document.getElementById("modalBody");
 function showModal(title,body){ modalTitle.textContent=title; modalBody.innerHTML=body; modalOverlay.style.display="flex"; }
 function closeModal(){ modalOverlay.style.display="none"; }
-modalOverlay.addEventListener("click",e=>{if(e.target===modalOverlay) closeModal();});
+modalOverlay.addEventListener("click",e=>{ if(e.target===modalOverlay) closeModal(); });
 
 // 検索
 function performSearch(){
@@ -227,10 +220,10 @@ function performSearch(){
     if(cat && item.category.trim()!==cat) return false;
     if(!keywords.length) return true;
     const text=(item.category2+" "+item.subject+" "+item.body).toLowerCase();
-    return mode==="AND"?keywords.every(k=>text.includes(k.toLowerCase())):keywords.some(k=>text.includes(k.toLowerCase()));
+    if(mode==="AND") return keywords.every(k=>text.includes(k.toLowerCase()));
+    else return keywords.some(k=>text.includes(k.toLowerCase()));
   });
   if(!filtered.length){ resultsDiv.textContent="該当なし"; return; }
-
   const table=document.createElement("table");
   table.innerHTML=`<thead><tr><th>カテゴリー</th><th>詳細</th><th>件名</th></tr></thead>`;
   const tbody=document.createElement("tbody");
@@ -238,7 +231,7 @@ function performSearch(){
     const row=document.createElement("tr");
     row.className="result-row";
     row.innerHTML=`<td>${item.category}</td><td>${item.category2}</td><td>${item.subject}</td>`;
-    row.addEventListener("click",()=>{showModal(item.subject,item.body);});
+    row.addEventListener("click",()=>{ showModal(item.subject,item.body); });
     tbody.appendChild(row);
   });
   table.appendChild(tbody);
@@ -248,7 +241,7 @@ function performSearch(){
 // カテゴリ生成
 const categories=new Set(excelData.map(item=>item.category));
 const select=document.getElementById("categorySelect");
-categories.forEach(c=>{if(c.trim()){const opt=document.createElement("option"); opt.value=c; opt.textContent=c; select.appendChild(opt);}});
+categories.forEach(c=>{ if(c.trim()){ const opt=document.createElement("option"); opt.value=c; opt.textContent=c; select.appendChild(opt);} });
 
 // 更新履歴
 const historyBody=document.getElementById("historyBody");
@@ -262,18 +255,24 @@ document.getElementById("toggleHistory").addEventListener("click",()=>{
   tbl.style.display=(tbl.style.display==="none"||tbl.style.display==="")?"block":"none";
 });
 
-// モーダル内リンククリック処理
+// コピー処理
 document.addEventListener("click",async function(e){
   const link=e.target.closest("a.copyLink");
   if(link){
     e.preventDefault();
     const textToCopy=link.dataset.copy||"";
-    try{await navigator.clipboard.writeText(textToCopy);}catch(err){}
+    try{ await navigator.clipboard.writeText(textToCopy);}catch(err){ console.error("コピー失敗",err);}
     window.open(link.href,"_blank");
   }
 });
 
-// メニュー開閉（≡ ⇄ ✕）
+// 検索イベント
+document.getElementById("keyword").addEventListener("input",performSearch);
+document.getElementById("categorySelect").addEventListener("change",performSearch);
+document.getElementById("mode").addEventListener("change",performSearch);
+performSearch();
+
+// サイドメニュー制御
 const menuToggle=document.getElementById("menuToggle");
 const sideMenu=document.getElementById("sideMenu");
 menuToggle.addEventListener("click",()=>{
@@ -285,13 +284,9 @@ menuToggle.addEventListener("click",()=>{
 document.querySelectorAll(".accordion-header").forEach(header=>{
   header.addEventListener("click",()=>{
     const content=header.nextElementSibling;
-    content.style.display=content.style.display==="block"?"none":"block";
+    content.style.display=(content.style.display==="block")?"none":"block";
   });
 });
-
-// 初期表示
-performSearch();
-
 });
 </script>
 
