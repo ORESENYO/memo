@@ -15,27 +15,26 @@ body {
 header {
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
   background: #444;
   color: white;
-  padding: 5px 15px;
-  height: 90px; /* タイトル＋日付が入る高さ */
-  box-sizing: border-box;
+  height: 90px; /* 高さを拡大 */
   position: relative;
 }
 header h1 {
   margin: 0;
-  font-size: 1.4em;
+  font-size: 1.5em;
 }
 header .date {
-  font-size: 0.9em;
+  font-size: 1em;
   margin-top: 5px;
-  color: #ddd;
 }
 .menu-toggle {
   position: absolute;
-  top: 10px;
   left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 1.5em;
   background: rgba(0,0,0,0.7);
   color: white;
@@ -71,10 +70,31 @@ header .date {
   box-sizing: border-box;
 }
 #sideMenu .menu-toggle {
-  margin-right: auto;
+  margin-right: 10px;
 }
 
-/* 検索・結果・更新履歴 */
+/* サイドメニュー アコーディオン */
+.accordion {
+  width: 100%;
+  border-top: 1px solid #ccc;
+}
+.accordion-item {
+  border-bottom: 1px solid #ccc;
+}
+.accordion-header {
+  padding: 10px;
+  cursor: pointer;
+  background: #eee;
+}
+.accordion-content {
+  display: none;
+  padding: 10px;
+}
+.accordion-content.open {
+  display: block;
+}
+
+/* メインコンテンツ */
 .container {
   padding: 20px;
 }
@@ -83,13 +103,12 @@ input, select {
   padding: 5px;
   font-size: 1em;
 }
-h3, h4 {
-  margin-top: 20px;
-}
+
+/* テーブル */
 table {
   border-collapse: collapse;
   width: 100%;
-  margin-top: 10px;
+  margin-top: 15px;
 }
 table, th, td {
   border: 1px solid #ccc;
@@ -130,17 +149,26 @@ th, td {
     <button id="menuToggleSide" class="menu-toggle">×</button>
     <h1>メニュー</h1>
   </header>
-  <nav>
-    <ul style="list-style:none; padding:10px;">
-      <li><a href="#">リンク1</a></li>
-      <li><a href="#">リンク2</a></li>
-    </ul>
-  </nav>
+  <div class="accordion">
+    <div class="accordion-item">
+      <div class="accordion-header">見出し1</div>
+      <div class="accordion-content">
+        <p>コンテンツ名A</p>
+        <p>コンテンツ名B</p>
+      </div>
+    </div>
+    <div class="accordion-item">
+      <div class="accordion-header">見出し2</div>
+      <div class="accordion-content">
+        <p>コンテンツ名C</p>
+        <p>コンテンツ名D</p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- メインコンテンツ -->
 <div class="container">
-  <!-- 検索フォーム -->
   <h3>検索</h3>
   <label>カテゴリー：</label>
   <select id="categorySelect"><option value="">すべて</option></select>
@@ -151,15 +179,13 @@ th, td {
     <option value="OR">OR検索</option>
   </select>
 
-  <!-- 検索結果 -->
   <h3>検索結果</h3>
   <table id="results">
     <thead><tr><th>カテゴリー</th><th>詳細</th></tr></thead>
     <tbody></tbody>
   </table>
 
-  <!-- 更新履歴 -->
-  <h4>更新履歴</h4>
+  <h3>更新履歴</h3>
   <table>
     <thead><tr><th>Ver</th><th>更新内容</th><th>更新者</th><th>承認者</th><th>更新日</th></tr></thead>
     <tbody>
@@ -194,6 +220,14 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   menuToggle.addEventListener("click", toggleMenu);
   menuToggleSide.addEventListener("click", toggleMenu);
+
+  // アコーディオン
+  document.querySelectorAll(".accordion-header").forEach(header => {
+    header.addEventListener("click", () => {
+      const content = header.nextElementSibling;
+      content.classList.toggle("open");
+    });
+  });
 
   // データ
   const excelData = [
