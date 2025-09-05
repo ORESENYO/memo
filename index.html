@@ -19,7 +19,7 @@ header {
   justify-content: center;
   background: #444;
   color: white;
-  height: 90px; /* 高さを拡大 */
+  height: 90px;
   position: relative;
 }
 header h1 {
@@ -63,7 +63,7 @@ header .date {
 #sideMenu header {
   background: #444;
   color: white;
-  height: 90px; /* メインヘッダーと統一 */
+  height: 90px;
   display: flex;
   align-items: center;
   padding: 0 15px;
@@ -132,6 +132,15 @@ th, td {
 }
 #modalContent h3 { margin-top: 0; }
 #modalContent p { white-space: pre-wrap; word-break: break-word; }
+
+/* 更新履歴アコーディオン */
+#historyAccordion {
+  margin-top: 20px;
+}
+#historyAccordion .accordion-header {
+  background: #ddd;
+  font-weight: bold;
+}
 </style>
 </head>
 <body>
@@ -185,14 +194,21 @@ th, td {
     <tbody></tbody>
   </table>
 
-  <h3>更新履歴</h3>
-  <table>
-    <thead><tr><th>Ver</th><th>更新内容</th><th>更新者</th><th>承認者</th><th>更新日</th></tr></thead>
-    <tbody>
-      <tr><td>1.0</td><td>新規作成</td><td>菅原</td><td>-</td><td>2025/08/29</td></tr>
-      <tr><td>1.1</td><td>検索機能改善</td><td>菅原</td><td>-</td><td>2025/09/05</td></tr>
-    </tbody>
-  </table>
+  <!-- 更新履歴をアコーディオンで -->
+  <div id="historyAccordion" class="accordion">
+    <div class="accordion-item">
+      <div class="accordion-header">更新履歴</div>
+      <div class="accordion-content">
+        <table>
+          <thead><tr><th>Ver</th><th>更新内容</th><th>更新者</th><th>承認者</th><th>更新日</th></tr></thead>
+          <tbody>
+            <tr><td>1.0</td><td>新規作成</td><td>菅原</td><td>-</td><td>2025/08/29</td></tr>
+            <tr><td>1.1</td><td>検索機能改善</td><td>菅原</td><td>-</td><td>2025/09/05</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- モーダル -->
@@ -205,23 +221,25 @@ th, td {
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  // 日付表示
+  // 日付表示 yyyy/mm/dd(aaa)
+  const week = ["日","月","火","水","木","金","土"];
   const today = new Date();
-  document.getElementById("currentDate").textContent =
-    today.getFullYear() + "/" + (today.getMonth()+1) + "/" + today.getDate();
+  const formatted = today.getFullYear() + "/" +
+    String(today.getMonth()+1).padStart(2,"0") + "/" +
+    String(today.getDate()).padStart(2,"0") +
+    "(" + week[today.getDay()] + ")";
+  document.getElementById("currentDate").textContent = formatted;
 
-  // メニュー開閉
+  // サイドメニュー開閉
   const sideMenu = document.getElementById("sideMenu");
-  const menuToggle = document.getElementById("menuToggle");
-  const menuToggleSide = document.getElementById("menuToggleSide");
-
-  function toggleMenu() {
+  document.getElementById("menuToggle").addEventListener("click", () => {
     sideMenu.classList.toggle("open");
-  }
-  menuToggle.addEventListener("click", toggleMenu);
-  menuToggleSide.addEventListener("click", toggleMenu);
+  });
+  document.getElementById("menuToggleSide").addEventListener("click", () => {
+    sideMenu.classList.toggle("open");
+  });
 
-  // アコーディオン
+  // アコーディオン共通処理
   document.querySelectorAll(".accordion-header").forEach(header => {
     header.addEventListener("click", () => {
       const content = header.nextElementSibling;
@@ -258,7 +276,7 @@ document.addEventListener("DOMContentLoaded", function() {
     let keywords = keyword ? keyword.split(/\s+/) : [];
     const filtered = excelData.filter(item => {
       if (cat && item.category.trim() !== cat) return false;
-      if (keywords.length === 0) return true;
+      if (!keywords.length) return true;
       const text = (item.category2 + " " + item.body).toLowerCase();
       if (mode === "AND") return keywords.every(k => text.includes(k.toLowerCase()));
       else return keywords.some(k => text.includes(k.toLowerCase()));
