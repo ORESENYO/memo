@@ -179,12 +179,6 @@ th, td {
         <div class="accordion-content">
           <p>コンテンツ名D</p>
           <p>コンテンツ名E</p>
-          <p>コンテンツ名E</p>
-          <p>コンテンツ名E</p>
-          <p>コンテンツ名E</p>
-          <p>コンテンツ名E</p>
-          <p>コンテンツ名E</p>
-          <p>コンテンツ名E</p>
         </div>
       </div>
     </div>
@@ -262,7 +256,16 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 
-  let excelData = [];
+  // ExcelデータをHTML内に直書き
+  const excelData = [
+    {category:"ニュース", category2:"国内", body:"
+      これは国内ニュースの本文です。<a href='https://example.com' class='copyLink' data-copy='コピー1'>リンク1</a>"
+    あああ
+    あああ
+    },
+    {category:"ニュース", category2:"海外", body:"これは海外ニュースの本文です。<br><a href='https://google.com' class='copyLink' data-copy='コピー2'>リンク2</a>"},
+    {category:"スポーツ", category2:"野球", body:"これは野球記事の本文です。<br><a href='https://yahoo.co.jp' class='copyLink' data-copy='コピー3'>リンク3</a>"}
+  ];
 
   const resultsTbody = document.querySelector("#results tbody");
   const modalOverlay = document.getElementById("modalOverlay");
@@ -306,25 +309,17 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // JSON 読み込み
-  fetch("data.json")
-    .then(res => res.json())
-    .then(data => {
-      excelData = data;
+  // カテゴリー選択肢生成
+  const categories = new Set(excelData.map(item => item.category));
+  const select = document.getElementById("categorySelect");
+  categories.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    select.appendChild(opt);
+  });
 
-      // カテゴリー選択肢生成
-      const categories = new Set(excelData.map(item => item.category));
-      const select = document.getElementById("categorySelect");
-      categories.forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c;
-        opt.textContent = c;
-        select.appendChild(opt);
-      });
-
-      performSearch();
-    })
-    .catch(err => console.error("JSON読み込み失敗:", err));
+  performSearch();
 
   // イベントバインド
   document.getElementById("keyword").addEventListener("input", performSearch);
