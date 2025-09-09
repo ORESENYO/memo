@@ -24,9 +24,12 @@ body {
   color: #fff;
   text-align: center;
   padding: 10px;
+  height: 60px; /* 高さを固定 */
+  box-sizing: border-box;
 }
 .sidebar-header h2, .sidebar-header p {
-  margin: 5px 0;
+  margin: 0;
+  font-size: 14px;
 }
 .sidebar-content {
   overflow-y: auto;
@@ -58,6 +61,21 @@ body {
   display: flex;
   flex-direction: column;
 }
+.main-header {
+  background: #666;
+  color: #fff;
+  text-align: center;
+  padding: 10px;
+  height: 60px; /* サイドと同じ高さ */
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.main-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
 .search-area {
   padding: 10px;
   border-bottom: 1px solid #ccc;
@@ -74,10 +92,10 @@ body {
   border: 1px solid #ccc;
   border-radius: 4px;
   box-sizing: border-box;
-  height: 32px; /* 高さ統一 */
+  height: 32px;
 }
 .search-area input {
-  flex: 0 1 250px; /* デスクトップでは短め */
+  flex: 0 1 250px;
   min-width: 150px;
 }
 .results {
@@ -141,10 +159,11 @@ body {
   }
   .sidebar {
     width: 100%;
-    height: 200px;
+    height: auto;
   }
-  .main {
-    flex: 1;
+  .main-header {
+    height: auto;
+    padding: 8px;
   }
   .search-area {
     flex-direction: column;
@@ -182,6 +201,9 @@ body {
 
 <!-- メイン -->
 <div class="main">
+  <div class="main-header">
+    <h2>メイン画面</h2>
+  </div>
   <div class="search-area">
     <select id="categoryFilter"></select>
     <input type="text" id="searchInput" placeholder="検索ワード（空白区切り可）">
