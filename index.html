@@ -63,18 +63,21 @@ body {
   border-bottom: 1px solid #ccc;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
-.search-area select {
-  padding: 4px 6px;
+.search-area select,
+.search-area input {
+  padding: 6px 8px;
   font-size: 14px;
-  max-width: 160px;
+  line-height: 1.4;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  height: 32px; /* 高さ統一 */
 }
 .search-area input {
-  padding: 4px 6px;
-  font-size: 14px;
-  flex: 0 1 250px; /* ← 少し短めに調整 */
+  flex: 0 1 250px; /* デスクトップでは短め */
   min-width: 150px;
 }
 .results {
