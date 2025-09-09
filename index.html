@@ -300,8 +300,8 @@ renderResults();
 
 // モーダル：余白クリックで閉じる
 const modal = document.getElementById("modal");
-window.addEventListener("click", e=>{
-  if(e.target === modal) {
+modal.addEventListener("click", e=>{
+  if(e.target.classList.contains("modal")) {
     modal.style.display = "none";
   }
 });
