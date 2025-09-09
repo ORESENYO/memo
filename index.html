@@ -2,340 +2,189 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>試作品</title>
+<title>検索ビューア</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body {
-  font-family: sans-serif;
-  margin: 0;
-  padding: 0;
-}
-
-/* ヘッダー */
-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #444;
-  color: white;
-  height: 90px;
-  position: relative;
-}
-header h1 {
-  margin: 0;
-  font-size: 1.5em;
-}
-header .date {
-  font-size: 1em;
-  margin-top: 5px;
-}
-.menu-toggle {
-  position: absolute;
-  left: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 1.5em;
-  background: rgba(0,0,0,0.7);
-  color: white;
-  border: none;
-  cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 4px;
-}
-
-/* サイドメニュー */
-#sideMenu {
-  position: fixed;
-  top: 0;
-  left: -260px;
-  width: 260px;
-  height: 100%;
-  background: #f4f4f4;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.3);
-  transition: left 0.3s ease;
-  display: flex;
-  flex-direction: column;
-}
-#sideMenu.open {
-  left: 0;
-}
-#sideMenu header {
-  background: #444;
-  color: white;
-  height: 90px;
-  display: flex;
-  align-items: center;
-  padding: 0 15px;
-  box-sizing: border-box;
-}
-#sideMenu .menu-toggle {
-  margin-right: 10px;
-}
-/* スクロールを有効化 */
-#sideMenuContent {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 0;
-}
-
-/* サイドメニュー アコーディオン */
-.accordion {
-  width: 100%;
-  border-top: 1px solid #ccc;
-}
-.accordion-item {
-  border-bottom: 1px solid #ccc;
-}
-.accordion-header {
-  padding: 10px;
-  cursor: pointer;
-  background: #eee;
-}
-.accordion-content {
-  display: none;
-  padding: 10px;
-}
-.accordion-content.open {
-  display: block;
-}
-
-/* メインコンテンツ */
-.container {
-  padding: 20px;
-}
-input, select {
-  margin: 5px;
-  padding: 5px;
-  font-size: 1em;
-}
-
-/* テーブル */
-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin-top: 15px;
-}
-table, th, td {
-  border: 1px solid #ccc;
-}
-th, td {
-  padding: 8px;
-  text-align: left;
-}
-
-/* モーダル */
-#modalOverlay {
-  display: none;
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5); z-index: 999;
-  justify-content: center; align-items: center;
-}
-#modalContent {
-  background: white; padding: 20px; border-radius: 8px;
-  max-width: 90%; max-height: 80%; overflow-y: auto;
-  box-sizing: border-box;
-}
-#modalContent h3 { margin-top: 0; }
-#modalContent p { white-space: pre-wrap; word-break: break-word; }
-
-/* 更新履歴アコーディオン */
-#historyAccordion {
-  margin-top: 20px;
-}
-#historyAccordion .accordion-header {
-  background: #ddd;
-  font-weight: bold;
-}
+  body { margin: 0; font-family: sans-serif; display: flex; height: 100vh; }
+  /* サイドメニュー */
+  .sidebar { width: 250px; background: #f5f5f5; overflow-y: auto; border-right: 1px solid #ccc; }
+  .sidebar-header { background: #666; color: white; text-align: center; padding: 10px; }
+  .sidebar-header h2, .sidebar-header p { margin: 5px 0; }
+  .accordion { border-top: 1px solid #ccc; }
+  .accordion button { width: 100%; text-align: left; padding: 10px; border: none; background: #eee; cursor: pointer; }
+  .accordion button.active, .accordion button:hover { background: #ddd; }
+  .panel { display: none; padding: 10px; background: #fafafa; border-top: 1px solid #ccc; }
+  /* メイン */
+  .main { flex: 1; display: flex; flex-direction: column; }
+  .search-bar { padding: 10px; border-bottom: 1px solid #ccc; display: flex; flex-wrap: wrap; align-items: center; }
+  .search-bar label { margin-left: 10px; }
+  .search-bar select, .search-bar input { margin: 5px; padding: 5px; }
+  .results { flex: 1; overflow-y: auto; padding: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+  tr:hover { background: #f0f0f0; cursor: pointer; }
+  /* フッター */
+  .footer { border-top: 1px solid #ccc; }
+  .footer .accordion button { background: #eee; }
+  /* モーダル */
+  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; }
+  .modal-content { background: white; padding: 20px; max-width: 600px; max-height: 80%; overflow-y: auto; white-space: pre-wrap; }
+  .close { float: right; cursor: pointer; font-weight: bold; }
 </style>
 </head>
 <body>
-
-<!-- メインヘッダー -->
-<header>
-  <button id="menuToggle" class="menu-toggle">≡</button>
-  <h1>試作品</h1>
-  <div class="date" id="currentDate"></div>
-</header>
-
-<!-- サイドメニュー -->
-<div id="sideMenu">
-  <header>
-    <button id="menuToggleSide" class="menu-toggle">×</button>
-    <h1>メニュー</h1>
-  </header>
-  <div id="sideMenuContent">
+  <!-- サイドメニュー -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>サイドメニュー</h2>
+      <p id="today"></p>
+    </div>
     <div class="accordion">
-      <div class="accordion-item">
-        <div class="accordion-header">見出し1</div>
-        <div class="accordion-content">
-          <p>コンテンツ名A</p>
-          <p>コンテンツ名B</p>
-          <p>コンテンツ名C</p>
-        </div>
-      </div>
-      <div class="accordion-item">
-        <div class="accordion-header">見出し2</div>
-        <div class="accordion-content">
-          <p>コンテンツ名D</p>
-          <p>コンテンツ名E</p>
+      <button>メニュー1</button>
+      <div class="panel">メニュー1の内容</div>
+      <button>メニュー2</button>
+      <div class="panel">メニュー2の内容</div>
+    </div>
+  </div>
+
+  <!-- メイン -->
+  <div class="main">
+    <div class="search-bar">
+      <label for="category">カテゴリ:</label>
+      <select id="category"><option value="">すべて</option></select>
+
+      <label for="searchMode">検索方法:</label>
+      <select id="searchMode">
+        <option value="and">AND検索</option>
+        <option value="or">OR検索</option>
+      </select>
+
+      <label for="keyword">検索:</label>
+      <input type="text" id="keyword" placeholder="件名・本文で検索">
+    </div>
+    <div class="results">
+      <table id="resultsTable">
+        <thead><tr><th>カテゴリ</th><th>件名</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="footer">
+      <div class="accordion">
+        <button>更新履歴</button>
+        <div class="panel">
+          <table>
+            <thead><tr><th>更新内容</th><th>更新者</th><th>承認者</th><th>更新日</th></tr></thead>
+            <tbody>
+              <tr><td>AND/OR検索追加</td><td>田中</td><td>佐藤</td><td>2025/09/09</td></tr>
+              <tr><td>自動検索実装</td><td>鈴木</td><td>高橋</td><td>2025/09/09</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- メインコンテンツ -->
-<div class="container">
-  <h3>検索</h3>
-  <label>カテゴリー：</label>
-  <select id="categorySelect"><option value="">すべて</option></select>
-  <label>検索：</label>
-  <input type="text" id="keyword" placeholder="キーワードを入力">
-  <select id="mode">
-    <option value="AND">AND検索</option>
-    <option value="OR">OR検索</option>
-  </select>
-
-  <h3>検索結果</h3>
-  <table id="results">
-    <thead><tr><th>カテゴリー</th><th>詳細</th></tr></thead>
-    <tbody></tbody>
-  </table>
-
-  <!-- 更新履歴をアコーディオンで -->
-  <div id="historyAccordion" class="accordion">
-    <div class="accordion-item">
-      <div class="accordion-header">更新履歴</div>
-      <div class="accordion-content">
-        <table>
-          <thead><tr><th>Ver</th><th>更新内容</th><th>更新者</th><th>承認者</th><th>更新日</th></tr></thead>
-          <tbody>
-            <tr><td>1.0</td><td>新規作成</td><td>菅原</td><td>-</td><td>2025/08/29</td></tr>
-            <tr><td>1.1</td><td>検索機能改善</td><td>菅原</td><td>-</td><td>2025/09/05</td></tr>
-          </tbody>
-        </table>
-      </div>
+  <!-- モーダル -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <div id="modalBody"></div>
     </div>
   </div>
-</div>
-
-<!-- モーダル -->
-<div id="modalOverlay">
-  <div id="modalContent">
-    <h3 id="modalTitle"></h3>
-    <p id="modalBody"></p>
-  </div>
-</div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-  // 日付表示 yyyy/mm/dd(aaa)
-  const week = ["日","月","火","水","木","金","土"];
-  const today = new Date();
-  const formatted = today.getFullYear() + "/" +
-    String(today.getMonth()+1).padStart(2,"0") + "/" +
-    String(today.getDate()).padStart(2,"0") +
-    "(" + week[today.getDay()] + ")";
-  document.getElementById("currentDate").textContent = formatted;
+  // 今日の日付
+  const days = ["日","月","火","水","木","金","土"];
+  const now = new Date();
+  document.getElementById("today").textContent =
+    now.getFullYear() + "/" + String(now.getMonth()+1).padStart(2,"0") + "/" +
+    String(now.getDate()).padStart(2,"0") + "(" + days[now.getDay()] + ")";
 
-  // サイドメニュー開閉
-  const sideMenu = document.getElementById("sideMenu");
-  document.getElementById("menuToggle").addEventListener("click", () => {
-    sideMenu.classList.toggle("open");
-  });
-  document.getElementById("menuToggleSide").addEventListener("click", () => {
-    sideMenu.classList.toggle("open");
-  });
-
-  // アコーディオン共通処理
-  document.querySelectorAll(".accordion-header").forEach(header => {
-    header.addEventListener("click", () => {
-      const content = header.nextElementSibling;
-      content.classList.toggle("open");
-    });
-  });
-
-  // ExcelデータをHTML内に直書き
-  const excelData = [
-    {category:"ニュース", category2:"国内", body:"
-      これは国内ニュースの本文です。<a href='https://example.com' class='copyLink' data-copy='コピー1'>リンク1</a>"
-    あああ
-    あああ
-    },
-    {category:"ニュース", category2:"海外", body:"これは海外ニュースの本文です。<br><a href='https://google.com' class='copyLink' data-copy='コピー2'>リンク2</a>"},
-    {category:"スポーツ", category2:"野球", body:"これは野球記事の本文です。<br><a href='https://yahoo.co.jp' class='copyLink' data-copy='コピー3'>リンク3</a>"}
+  // 検索データ
+  const searchData = [
+    {category:"お知らせ", subject:"システム更新", body:`システムを更新しました。
+詳細は以下の通りです。
+1. 検索機能追加
+2. モーダル表示改善
+3. UI調整
+...（以下長文でも可、改行そのまま表示されます）`},
+    {category:"障害情報", subject:"ネットワーク障害", body:"現在、一部ネットワークに障害が発生しています。"},
+    {category:"メンテナンス", subject:"定期メンテナンス", body:"次回メンテナンスは2025/09/15に実施予定です。"}
   ];
 
-  const resultsTbody = document.querySelector("#results tbody");
-  const modalOverlay = document.getElementById("modalOverlay");
-  const modalTitle = document.getElementById("modalTitle");
-  const modalBody = document.getElementById("modalBody");
-
-  function showModal(title, body) {
-    modalTitle.textContent = title;
-    modalBody.innerHTML = body;
-    modalOverlay.style.display = "flex";
-  }
-  modalOverlay.addEventListener("click", e => {
-    if (e.target === modalOverlay) modalOverlay.style.display = "none";
-  });
-
-  function performSearch() {
-    const cat = document.getElementById("categorySelect").value.trim();
-    const keyword = document.getElementById("keyword").value.trim();
-    const mode = document.getElementById("mode").value;
-    resultsTbody.innerHTML = "";
-
-    let keywords = keyword ? keyword.split(/\s+/) : [];
-    const filtered = excelData.filter(item => {
-      if (cat && item.category.trim() !== cat) return false;
-      if (!keywords.length) return true;
-      const text = (item.category2 + " " + item.body).toLowerCase();
-      if (mode === "AND") return keywords.every(k => text.includes(k.toLowerCase()));
-      else return keywords.some(k => text.includes(k.toLowerCase()));
-    });
-
-    if (filtered.length === 0) {
-      resultsTbody.innerHTML = `<tr><td colspan="2">該当なし</td></tr>`;
-      return;
-    }
-
-    filtered.forEach(item => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${item.category}</td><td>${item.category2}</td>`;
-      tr.addEventListener("click", () => showModal(item.category, item.body));
-      resultsTbody.appendChild(tr);
-    });
-  }
-
-  // カテゴリー選択肢生成
-  const categories = new Set(excelData.map(item => item.category));
-  const select = document.getElementById("categorySelect");
-  categories.forEach(c => {
+  // カテゴリ自動生成
+  const categorySet = [...new Set(searchData.map(d => d.category))];
+  const categorySelect = document.getElementById("category");
+  categorySet.forEach(cat => {
     const opt = document.createElement("option");
-    opt.value = c;
-    opt.textContent = c;
-    select.appendChild(opt);
+    opt.value = cat;
+    opt.textContent = cat;
+    categorySelect.appendChild(opt);
   });
 
-  performSearch();
+  // 検索処理
+  function search() {
+    const category = categorySelect.value;
+    const keyword = document.getElementById("keyword").value.trim();
+    const mode = document.getElementById("searchMode").value;
+    const tbody = document.querySelector("#resultsTable tbody");
+    tbody.innerHTML = "";
 
-  // イベントバインド
-  document.getElementById("keyword").addEventListener("input", performSearch);
-  document.getElementById("categorySelect").addEventListener("change", performSearch);
-  document.getElementById("mode").addEventListener("change", performSearch);
+    // 複数ワードを分割
+    const words = keyword ? keyword.split(/\s+/) : [];
 
-  // コピー付きリンク処理
-  document.addEventListener("click", function(e) {
-    if (e.target.classList.contains("copyLink")) {
-      e.preventDefault();
-      const textToCopy = e.target.getAttribute("data-copy");
-      navigator.clipboard.writeText(textToCopy);
-      window.open(e.target.href, "_blank");
-    }
+    searchData.forEach(item => {
+      let match = true;
+
+      if (category && item.category !== category) {
+        match = false;
+      }
+
+      if (words.length > 0) {
+        const target = item.subject + " " + item.body;
+        if (mode === "and") {
+          // 全てのキーワードを含む
+          match = match && words.every(w => target.includes(w));
+        } else {
+          // どれか1つを含む
+          match = match && words.some(w => target.includes(w));
+        }
+      }
+
+      if (match) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${item.category}</td><td>${item.subject}</td>`;
+        tr.onclick = () => openModal(item.body);
+        tbody.appendChild(tr);
+      }
+    });
+  }
+
+  // モーダル
+  function openModal(text) {
+    document.getElementById("modalBody").textContent = text;
+    document.getElementById("modal").style.display = "flex";
+  }
+  function closeModal() {
+    document.getElementById("modal").style.display = "none";
+  }
+
+  // アコーディオン
+  document.querySelectorAll(".accordion button").forEach(btn=>{
+    btn.addEventListener("click", function(){
+      this.classList.toggle("active");
+      const panel = this.nextElementSibling;
+      panel.style.display = panel.style.display==="block" ? "none" : "block";
+    });
   });
-});
+
+  // 自動検索イベント
+  document.getElementById("keyword").addEventListener("input", search);
+  document.getElementById("category").addEventListener("change", search);
+  document.getElementById("searchMode").addEventListener("change", search);
+
+  // 初期表示
+  search();
 </script>
 </body>
 </html>
