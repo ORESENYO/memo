@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>検索システム</title>
+<title>検索ビューア</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
@@ -15,7 +15,7 @@ body {
 /* サイドメニュー */
 .sidebar {
   width: 250px;
-  background: #f5f5f5;
+  background: #f4f4f4;
   display: flex;
   flex-direction: column;
 }
@@ -23,57 +23,62 @@ body {
   background: #666;
   color: #fff;
   text-align: center;
-  padding: 15px;
-  font-size: 16px;
-  line-height: 1.2;
-  height: 50px; /* 高さ固定 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.sidebar-content {
-  flex: 1;
-  overflow-y: auto;
   padding: 10px;
 }
+.sidebar-header h2, .sidebar-header p {
+  margin: 5px 0;
+}
+.sidebar-content {
+  overflow-y: auto;
+  flex: 1;
+  padding: 10px;
+}
+.accordion-item {
+  border-bottom: 1px solid #ccc;
+}
+.accordion-title {
+  background: #ddd;
+  padding: 8px;
+  cursor: pointer;
+}
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  background: #fafafa;
+  padding: 0 8px;
+}
+.accordion-content.open {
+  padding: 8px;
+}
 
-/* メイン */
+/* メインコンテンツ */
 .main {
   flex: 1;
   display: flex;
   flex-direction: column;
-}
-.main-header {
-  background: #666;
-  color: #fff;
-  text-align: center;
-  padding: 15px;
-  font-size: 16px;
-  height: 50px; /* サイドと同じ高さ */
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .search-area {
   padding: 10px;
   border-bottom: 1px solid #ccc;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
-.search-area select, .search-area input {
+.search-area select,
+.search-area input {
   padding: 6px 8px;
   font-size: 14px;
-  height: 32px;
-}
-.search-area select {
-  max-width: 160px;
+  line-height: 1.4;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  height: 32px; /* 高さ統一 */
 }
 .search-area input {
-  flex: 1;
+  flex: 0 1 250px; /* デスクトップでは短め */
   min-width: 150px;
-  max-width: 300px;
 }
 .results {
   flex: 1;
@@ -87,53 +92,44 @@ body {
 .results th, .results td {
   border: 1px solid #ccc;
   padding: 6px;
-  font-size: 14px;
   text-align: left;
+  cursor: pointer;
 }
 .footer {
   border-top: 1px solid #ccc;
-  padding: 10px;
 }
-
-/* アコーディオン */
-.accordion button {
+.footer .accordion-title {
+  background: #eee;
+}
+.footer .accordion-content table {
   width: 100%;
-  padding: 10px;
+  border-collapse: collapse;
+}
+.footer .accordion-content th, 
+.footer .accordion-content td {
+  border: 1px solid #ccc;
+  padding: 6px;
   text-align: left;
-  border: none;
-  outline: none;
-  background: #ddd;
-  cursor: pointer;
-  margin-bottom: 5px;
-  font-size: 14px;
-}
-.accordion .panel {
-  display: none;
-  padding: 5px 10px;
-  background: #f9f9f9;
-}
-.accordion button.active + .panel {
-  display: block;
 }
 
 /* モーダル */
 .modal {
   display: none;
   position: fixed;
-  z-index: 1000;
-  left: 0; top: 0;
+  top: 0; left: 0;
   width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
+  background: rgba(0,0,0,0.6);
   justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 .modal-content {
   background: #fff;
+  padding: 20px;
   max-width: 600px;
+  width: 90%;
   max-height: 80%;
   overflow-y: auto;
-  padding: 20px;
   border-radius: 6px;
   white-space: pre-wrap;
 }
@@ -150,103 +146,138 @@ body {
   .main {
     flex: 1;
   }
+  .search-area {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search-area select, .search-area input {
+    max-width: 100%;
+    width: 100%;
+  }
 }
 </style>
 </head>
 <body>
-  <div class="sidebar">
-    <div class="sidebar-header" id="sidebarDate"></div>
-    <div class="sidebar-content">
-      <div class="accordion">
-        <button>メニュー1</button>
-        <div class="panel"><p>内容1</p></div>
-        <button>メニュー2</button>
-        <div class="panel"><p>内容2</p></div>
+<!-- サイドメニュー -->
+<div class="sidebar">
+  <div class="sidebar-header" id="today"></div>
+  <div class="sidebar-content">
+    <div class="accordion-item">
+      <div class="accordion-title">メニュー1</div>
+      <div class="accordion-content">
+        <p>メニュー1の内容</p>
+      </div>
+    </div>
+    <div class="accordion-item">
+      <div class="accordion-title">メニュー2</div>
+      <div class="accordion-content">
+        <p>メニュー2の内容</p>
       </div>
     </div>
   </div>
+</div>
 
-  <div class="main">
-    <div class="main-header">検索システム</div>
-    <div class="search-area">
-      <select id="categoryFilter"><option value="">すべてのカテゴリ</option></select>
-      <input type="text" id="searchInput" placeholder="検索ワードを入力 (スペース区切り)">
-      <select id="searchMode">
-        <option value="and">AND検索</option>
-        <option value="or">OR検索</option>
-      </select>
-    </div>
-    <div class="results">
-      <table>
-        <thead><tr><th>カテゴリ</th><th>件名</th></tr></thead>
-        <tbody id="resultsBody"></tbody>
-      </table>
-    </div>
-    <div class="footer">
-      <div class="accordion">
-        <button>更新履歴</button>
-        <div class="panel">
-          <table>
-            <thead><tr><th>更新内容</th><th>更新者</th><th>承認者</th><th>更新日</th></tr></thead>
-            <tbody>
-              <tr><td>検索機能追加</td><td>山田</td><td>佐藤</td><td>2025/09/01</td></tr>
-              <tr><td>UI調整</td><td>田中</td><td>鈴木</td><td>2025/09/05</td></tr>
-            </tbody>
-          </table>
-        </div>
+<!-- メイン -->
+<div class="main">
+  <div class="search-area">
+    <select id="categoryFilter"></select>
+    <input type="text" id="searchInput" placeholder="検索ワード（空白区切り可）">
+    <select id="searchMode">
+      <option value="and">AND検索</option>
+      <option value="or">OR検索</option>
+    </select>
+  </div>
+  <div class="results">
+    <table>
+      <thead>
+        <tr><th>カテゴリ</th><th>件名</th></tr>
+      </thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
+  </div>
+  <div class="footer">
+    <div class="accordion-item">
+      <div class="accordion-title">更新履歴</div>
+      <div class="accordion-content">
+        <table>
+          <thead>
+            <tr><th>更新内容</th><th>更新者</th><th>承認者</th><th>更新日</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>検索機能追加</td><td>田中</td><td>佐藤</td><td>2025/09/01</td></tr>
+            <tr><td>レイアウト改善</td><td>鈴木</td><td>山田</td><td>2025/09/05</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- モーダル -->
-  <div id="modal" class="modal">
-    <div class="modal-content" id="modalBody"></div>
-  </div>
+<!-- モーダル -->
+<div id="modal" class="modal">
+  <div class="modal-content" id="modalBody"></div>
+</div>
 
 <script>
-// 日付表示
+// 今日の日付を表示
 const today = new Date();
-const youbi = ["日","月","火","水","木","金","土"];
-const dateStr = today.getFullYear() + "/" + 
-  String(today.getMonth()+1).padStart(2,"0") + "/" +
-  String(today.getDate()).padStart(2,"0") + 
-  "(" + youbi[today.getDay()] + ")";
-document.getElementById("sidebarDate").textContent = dateStr;
+const weekdays = ["日","月","火","水","木","金","土"];
+document.getElementById("today").textContent = 
+  today.getFullYear()+"/"+
+  String(today.getMonth()+1).padStart(2,"0")+"/"+
+  String(today.getDate()).padStart(2,"0")+
+  "("+weekdays[today.getDay()]+")";
+
+// アコーディオン
+document.querySelectorAll(".accordion-title").forEach(title=>{
+  title.addEventListener("click", ()=>{
+    const content = title.nextElementSibling;
+    content.classList.toggle("open");
+    if(content.classList.contains("open")){
+      content.style.maxHeight = content.scrollHeight + "px";
+    } else {
+      content.style.maxHeight = null;
+    }
+  });
+});
 
 // データ
 const data = [
-  {category:"ニュース", subject:"イベント開催", body:"イベントの詳細本文がここに入ります。\n改行も保持されます。"},
-  {category:"お知らせ", subject:"メンテナンス情報", body:"システムメンテナンスのお知らせです。\n9/15 10:00〜12:00"},
-  {category:"ニュース", subject:"新機能リリース", body:"検索機能を追加しました。\nぜひご利用ください。"}
+  {category:"お知らせ", subject:"メンテナンス", body:`システムメンテナンスを実施します。
+日時は以下の通りです。
+・9月15日 0:00〜6:00
+ご理解とご協力をお願いいたします。`},
+  {category:"ニュース", subject:"新機能追加", body:`検索機能が強化されました。
+AND/OR検索やカテゴリ絞り込みが可能です。`},
+  {category:"FAQ", subject:"ログインできない", body:`ログインできない場合は以下をご確認ください。
+1. ユーザーIDとパスワードが正しいか
+2. CapsLockが有効になっていないか
+3. ネットワーク環境に問題がないか`}
 ];
 
-// カテゴリ自動読み込み
-const categorySet = [...new Set(data.map(d=>d.category))];
-const categoryFilter = document.getElementById("categoryFilter");
-categorySet.forEach(c=>{
-  const opt = document.createElement("option");
-  opt.value = c;
-  opt.textContent = c;
-  categoryFilter.appendChild(opt);
-});
+// カテゴリ一覧を自動生成
+const categories = [...new Set(data.map(d=>d.category))];
+const catSelect = document.getElementById("categoryFilter");
+catSelect.innerHTML = `<option value="">すべて</option>` + 
+  categories.map(c=>`<option value="${c}">${c}</option>`).join("");
 
-// 検索
+// 検索処理
 function renderResults(){
   const tbody = document.getElementById("resultsBody");
   tbody.innerHTML = "";
-  const kw = document.getElementById("searchInput").value.trim();
-  const words = kw ? kw.split(/\s+/) : [];
+  const keyword = document.getElementById("searchInput").value.trim();
+  const words = keyword ? keyword.split(/\s+/) : [];
   const mode = document.getElementById("searchMode").value;
-  const cat = categoryFilter.value;
+  const selectedCat = catSelect.value;
 
-  const filtered = data.filter(item=>{
-    if(cat && item.category !== cat) return false;
-    if(words.length===0) return true;
-    const text = item.subject + " " + item.body;
+  let filtered = data.filter(item=>{
+    if(selectedCat && item.category !== selectedCat) return false;
+    if(words.length === 0) return true;
+    const text = (item.subject + " " + item.body).toLowerCase();
     if(mode==="and"){
-      return words.every(w=>text.includes(w));
-    }else{
-      return words.some(w=>text.includes(w));
+      return words.every(w=> text.includes(w.toLowerCase()));
+    } else {
+      return words.some(w=> text.includes(w.toLowerCase()));
     }
   });
 
@@ -263,19 +294,14 @@ function renderResults(){
 document.getElementById("searchInput").addEventListener("input", renderResults);
 document.getElementById("searchMode").addEventListener("change", renderResults);
 document.getElementById("categoryFilter").addEventListener("change", renderResults);
+
+// 初期表示
 renderResults();
 
-// アコーディオン
-document.querySelectorAll(".accordion button").forEach(btn=>{
-  btn.addEventListener("click", ()=>{
-    btn.classList.toggle("active");
-  });
-});
-
-// モーダル余白クリックで閉じる
+// モーダル：余白クリックで閉じる
 const modal = document.getElementById("modal");
 modal.addEventListener("click", e=>{
-  if(e.target === modal){
+  if(e.target.classList.contains("modal")) {
     modal.style.display = "none";
   }
 });
