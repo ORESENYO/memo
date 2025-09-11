@@ -174,20 +174,7 @@
               <th>更新日</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>機能追加</td>
-              <td>山田</td>
-              <td>佐藤</td>
-              <td>2025/09/01</td>
-            </tr>
-            <tr>
-              <td>デザイン修正</td>
-              <td>鈴木</td>
-              <td>高橋</td>
-              <td>2025/09/05</td>
-            </tr>
-          </tbody>
+          <tbody id="updateList"></tbody>
         </table>
       </details>
     </footer>
@@ -232,6 +219,25 @@
 ぜひご利用ください。`
     }
   ];
+
+  // 更新履歴データ
+  const updates = [
+    { content: "機能追加", author: "山田", approver: "佐藤", date: "2025/09/01" },
+    { content: "デザイン修正", author: "鈴木", approver: "高橋", date: "2025/09/05" }
+  ];
+
+  // 更新履歴描画
+  const updateList = document.getElementById("updateList");
+  updates.forEach(upd => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${upd.content}</td>
+      <td>${upd.author}</td>
+      <td>${upd.approver}</td>
+      <td>${upd.date}</td>
+    `;
+    updateList.appendChild(tr);
+  });
 
   // カテゴリ自動生成
   const categoryFilter = document.getElementById("categoryFilter");
