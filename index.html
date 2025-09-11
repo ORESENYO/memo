@@ -11,6 +11,7 @@
     display: flex;
     height: 100vh;
   }
+  /* サイドメニュー */
   .sidebar {
     width: 250px;
     background: #f0f0f0;
@@ -30,6 +31,7 @@
     overflow-y: auto;
     padding: 10px;
   }
+  /* メイン */
   .main {
     flex: 1;
     display: flex;
@@ -48,20 +50,24 @@
     overflow-y: auto;
     padding: 10px;
   }
+  /* 検索フォーム */
   .search-bar {
     display: flex;
     gap: 5px;
     margin-bottom: 10px;
     flex-wrap: wrap;
+    align-items: center;
   }
-  select, input[type="text"] {
+  .search-bar select,
+  .search-bar input[type="text"] {
     padding: 5px;
     font-size: 14px;
-    height: 32px;
+    height: 32px; /* 統一 */
+    box-sizing: border-box;
   }
-  input[type="text"] {
+  .search-bar input[type="text"] {
     flex: 1;
-    max-width: 250px;
+    min-width: 150px;
   }
   table {
     width: 100%;
@@ -74,30 +80,27 @@
     text-align: left;
     font-size: 14px;
   }
-  th {
-    background: #eee;
-  }
-  tr.selected {
-    background: #ddd;
-  }
-  tr:hover {
-    background: #eee;
-  }
+  th { background: #eee; }
+  tr.selected { background: #ddd; }
+  tr:hover { background: #eee; }
+  /* アコーディオン */
   details summary {
     cursor: pointer;
     padding: 5px;
     background: #ddd;
     margin-bottom: 5px;
   }
+  /* フッター */
   footer {
     border-top: 1px solid #ccc;
     padding: 10px;
   }
+  /* モーダル */
   .modal {
     display: none;
     position: fixed;
     z-index: 1000;
-    left: 0; top: 0;
+    left:0; top:0;
     width: 100%; height: 100%;
     background: rgba(0,0,0,0.5);
     align-items: center;
@@ -111,9 +114,7 @@
     overflow-y: auto;
     white-space: pre-wrap;
   }
-  mark {
-    background: yellow;
-  }
+  mark { background: yellow; }
   @media (max-width: 768px) {
     body { flex-direction: column; }
     .sidebar { width: 100%; height: 200px; }
@@ -122,161 +123,142 @@
 </style>
 </head>
 <body>
-  <div class="sidebar">
-    <div class="sidebar-header" id="sidebar-date"></div>
-    <div class="sidebar-content">
-      <details>
-        <summary>メニュー1</summary>
-        <p>項目A</p>
-      </details>
-      <details>
-        <summary>メニュー2</summary>
-        <p>項目B</p>
-      </details>
-    </div>
-  </div>
 
-  <div class="main">
-    <div class="main-header">検索システム</div>
-    <div class="main-content">
-      <div class="search-bar">
-        <select id="categoryFilter"></select>
-        <input type="text" id="searchInput" placeholder="検索ワードを入力（スペース区切り可）">
-        <select id="searchMode">
-          <option value="and">AND検索</option>
-          <option value="or">OR検索</option>
-        </select>
-      </div>
+<div class="sidebar">
+  <div class="sidebar-header" id="sidebar-date"></div>
+  <div class="sidebar-content">
+    <details>
+      <summary>メニュー1</summary>
+      <p>項目A</p>
+    </details>
+    <details>
+      <summary>メニュー2</summary>
+      <p>項目B</p>
+    </details>
+  </div>
+</div>
+
+<div class="main">
+  <div class="main-header">検索システム</div>
+  <div class="main-content">
+    <div class="search-bar">
+      <select id="categoryFilter"></select>
+      <input type="text" id="searchInput" placeholder="検索ワードを入力（スペース区切り可）">
+      <select id="searchMode">
+        <option value="and">AND検索</option>
+        <option value="or">OR検索</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr><th>カテゴリ</th><th>件名</th></tr>
+      </thead>
+      <tbody id="resultList"></tbody>
+    </table>
+  </div>
+  <footer>
+    <details>
+      <summary>更新履歴</summary>
       <table>
         <thead>
-          <tr>
-            <th>カテゴリ</th>
-            <th>件名</th>
-          </tr>
+          <tr><th>更新内容</th><th>更新者</th><th>承認者</th><th>更新日</th></tr>
         </thead>
-        <tbody id="resultList"></tbody>
+        <tbody id="updateList"></tbody>
       </table>
-    </div>
-    <footer>
-      <details>
-        <summary>更新履歴</summary>
-        <table>
-          <thead>
-            <tr>
-              <th>更新内容</th>
-              <th>更新者</th>
-              <th>承認者</th>
-              <th>更新日</th>
-            </tr>
-          </thead>
-          <tbody id="updateList"></tbody>
-        </table>
-      </details>
-    </footer>
-  </div>
+    </details>
+  </footer>
+</div>
 
-  <div id="modal" class="modal">
-    <div class="modal-content" id="modal-body"></div>
-  </div>
+<div id="modal" class="modal">
+  <div class="modal-content" id="modal-body"></div>
+</div>
 
 <script>
+  // 日付
   function formatDate() {
-    const days = ["日","月","火","水","木","金","土"];
-    const d = new Date();
+    const days=["日","月","火","水","木","金","土"];
+    const d=new Date();
     return `${d.getFullYear()}/${("0"+(d.getMonth()+1)).slice(-2)}/${("0"+d.getDate()).slice(-2)}(${days[d.getDay()]})`;
   }
   document.getElementById("sidebar-date").textContent = formatDate();
 
-  // データ（テンプレートリテラルで改行保持）
-  const data = [
-    { category: "ニュース", subject: "イベント開催", body: `イベントの詳細本文がここに入ります。
+  // データ（テンプレートリテラル）
+  const data=[
+    { category:"ニュース", subject:"イベント開催", body:`イベントの詳細本文がここに入ります。
 改行も保持されます。` },
-    { category: "お知らせ", subject: "メンテナンス情報", body: `システムメンテナンスのお知らせです。
+    { category:"お知らせ", subject:"メンテナンス情報", body:`システムメンテナンスのお知らせです。
 9/15 10:00〜12:00` },
-    { category: "ニュース", subject: "新機能リリース", body: `検索機能を追加しました。
+    { category:"ニュース", subject:"新機能リリース", body:`検索機能を追加しました。
 ぜひご利用ください。` }
   ];
 
-  const updates = [
-    { content: "機能追加", author: "山田", approver: "佐藤", date: "2025/09/01" },
-    { content: "デザイン修正", author: "鈴木", approver: "高橋", date: "2025/09/05" }
+  const updates=[
+    {content:"機能追加",author:"山田",approver:"佐藤",date:"2025/09/01"},
+    {content:"デザイン修正",author:"鈴木",approver:"高橋",date:"2025/09/05"}
   ];
 
-  const updateList = document.getElementById("updateList");
-  updates.forEach(upd => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${upd.content}</td><td>${upd.author}</td><td>${upd.approver}</td><td>${upd.date}</td>`;
+  // 更新履歴描画
+  const updateList=document.getElementById("updateList");
+  updates.forEach(upd=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${upd.content}</td><td>${upd.author}</td><td>${upd.approver}</td><td>${upd.date}</td>`;
     updateList.appendChild(tr);
   });
 
-  const categoryFilter = document.getElementById("categoryFilter");
-  const categories = ["すべて", ...new Set(data.map(d=>d.category))];
-  categories.forEach(c => {
-    const opt = document.createElement("option");
-    opt.value = c;
-    opt.textContent = c;
+  // カテゴリ自動生成
+  const categoryFilter=document.getElementById("categoryFilter");
+  const categories=["すべて",...new Set(data.map(d=>d.category))];
+  categories.forEach(c=>{
+    const opt=document.createElement("option");
+    opt.value=c;
+    opt.textContent=c;
     categoryFilter.appendChild(opt);
   });
 
-  const searchInput = document.getElementById("searchInput");
-  const searchMode = document.getElementById("searchMode");
-  const resultList = document.getElementById("resultList");
-  const modal = document.getElementById("modal");
-  const modalBody = document.getElementById("modal-body");
-  let selectedItem = null;
+  const searchInput=document.getElementById("searchInput");
+  const searchMode=document.getElementById("searchMode");
+  const resultList=document.getElementById("resultList");
+  const modal=document.getElementById("modal");
+  const modalBody=document.getElementById("modal-body");
+  let selectedItem=null;
 
-  function escapeRegex(str) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
+  function escapeRegex(str){return str.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+  function highlightText(text,words){words.forEach(w=>{const re=new RegExp(`(${escapeRegex(w)})`,'gi');text=text.replace(re,'<mark>$1</mark>');});return text;}
 
-  function highlightText(text, words) {
-    words.forEach(w=>{
-      const re = new RegExp(`(${escapeRegex(w)})`, 'gi');
-      text = text.replace(re,'<mark>$1</mark>');
-    });
-    return text;
-  }
+  function renderResults(){
+    resultList.innerHTML="";
+    const filter=categoryFilter.value;
+    const words=searchInput.value.trim().split(/\s+/).filter(Boolean);
+    const mode=searchMode.value;
 
-  function renderResults() {
-    resultList.innerHTML = "";
-    const filter = categoryFilter.value;
-    const words = searchInput.value.trim().split(/\s+/).filter(Boolean);
-    const mode = searchMode.value;
-
-    const results = data.filter(item=>{
+    const results=data.filter(item=>{
       if(filter!=="すべて" && item.category!==filter) return false;
       if(words.length===0) return true;
-      const text = item.subject + " " + item.body;
-      if(mode==="and") return words.every(w=>text.includes(w));
-      return words.some(w=>text.includes(w));
+      const text=item.subject+" "+item.body;
+      return mode==="and"?words.every(w=>text.includes(w)):words.some(w=>text.includes(w));
     });
 
     results.forEach(item=>{
-      const tr = document.createElement("tr");
-      const highlightedSubject = words.length ? highlightText(item.subject, words) : item.subject;
-      tr.innerHTML = `<td>${item.category}</td><td>${highlightedSubject}</td>`;
-      tr.onclick = ()=>{
+      const tr=document.createElement("tr");
+      const highlightedSubject=words.length?highlightText(item.subject,words):item.subject;
+      tr.innerHTML=`<td>${item.category}</td><td>${highlightedSubject}</td>`;
+      tr.onclick=()=>{
         if(selectedItem) selectedItem.classList.remove("selected");
         tr.classList.add("selected");
-        selectedItem = tr;
-        modalBody.innerHTML = words.length ? highlightText(item.body, words) : item.body;
-        modal.style.display = "flex";
+        selectedItem=tr;
+        modalBody.innerHTML=words.length?highlightText(item.body,words):item.body;
+        modal.style.display="flex";
       };
       resultList.appendChild(tr);
     });
   }
 
-  [categoryFilter, searchInput, searchMode].forEach(el=>{
-    el.addEventListener("input", renderResults);
-  });
+  [categoryFilter,searchInput,searchMode].forEach(el=>el.addEventListener("input",renderResults));
 
-  modal.addEventListener("click", e=>{
+  modal.addEventListener("click",e=>{
     if(e.target===modal){
       modal.style.display="none";
-      if(selectedItem){
-        selectedItem.classList.remove("selected");
-        selectedItem=null;
-      }
+      if(selectedItem){selectedItem.classList.remove("selected");selectedItem=null;}
     }
   });
 
