@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>テキスト別タブ表示</title>
+    <title>VBAコード表示</title>
 </head>
 <body>
 
@@ -10,8 +10,7 @@
 
 <script>
 function openText() {
-    const text = `
-'====================================================================
+    const text = `'====================================================================
 '【Module1】共通変数・初期化・起動
 '====================================================================
 Option Explicit
@@ -191,10 +190,10 @@ Private Sub CommandButton4_Click()
     UserForm1.RefreshTextBox
     Unload Me
 
-End Sub
-`;
+End Sub`;
 
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const html = `<pre>${text}</pre>`;
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
 
     window.open(url, "_blank");
