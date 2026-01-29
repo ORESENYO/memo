@@ -10,9 +10,189 @@
 
 <script>
 function openText() {
-    const text = `1行目
-2行目
-3行目`;
+    const text = `
+'====================================================================
+'【Module1】共通変数・初期化・起動
+'====================================================================
+Option Explicit
+
+'--- UserForm間で共有する値 ---
+Public UF_ButtonCaption As String      ' UserForm1：押されたボタン
+Public UF_MsgResult As String          ' Yes / No 結果
+Public UF_UF2BtnCaption As String      ' UserForm2：選択ボタン
+Public UF_UF2Values(1 To 4) As String  ' UserForm2：入力値
+
+'--- 起動 ---
+Sub Show()
+    InitGlobals
+    UserForm1.Show vbModeless
+End Sub
+
+'--- 初期化 ---
+Sub InitGlobals()
+    Dim i As Long
+
+    UF_ButtonCaption = ""
+    UF_MsgResult = ""
+    UF_UF2BtnCaption = ""
+
+    For i = 1 To 4
+        UF_UF2Values(i) = ""
+    Next i
+End Sub
+
+
+'====================================================================
+'【UserForm1】メイン画面
+'====================================================================
+Option Explicit
+
+Private Sub UserForm_Initialize()
+    RefreshTextBox
+End Sub
+
+'------------------------
+' CommandButton1
+'------------------------
+Private Sub CommandButton1_Click()
+
+    UF_ButtonCaption = Me.CommandButton1.Caption
+
+    If AskYesNo("確認しますか？") Then
+        UF_MsgResult = "はい"
+    Else
+        UF_MsgResult = "いいえ"
+    End If
+
+    RefreshTextBox
+    UserForm2.Show vbModeless
+
+End Sub
+
+Private Function AskYesNo(msg As String) As Boolean
+    AskYesNo = (MsgBox(msg, vbYesNo + vbQuestion, "確認") = vbYes)
+End Function
+
+'------------------------
+' OptionButton 即時反映
+'------------------------
+Private Sub OptionButton1_Click(): RefreshTextBox: End Sub
+Private Sub OptionButton2_Click(): RefreshTextBox: End Sub
+Private Sub OptionButton3_Click(): RefreshTextBox: End Sub
+Private Sub OptionButton4_Click(): RefreshTextBox: End Sub
+Private Sub OptionButton5_Click(): RefreshTextBox: End Sub
+Private Sub OptionButton6_Click(): RefreshTextBox: End Sub
+Private Sub OptionButton7_Click(): RefreshTextBox: End Sub
+Private Sub OptionButton8_Click(): RefreshTextBox: End Sub
+Private Sub OptionButton9_Click(): RefreshTextBox: End Sub
+Private Sub OptionButton10_Click(): RefreshTextBox: End Sub
+
+'------------------------
+' TextBox 表示更新
+'------------------------
+Public Sub RefreshTextBox()
+
+    Me.TextBox1.Value = _
+        "なんのボタンが押された？：" & UF_ButtonCaption & vbCrLf & _
+        "判定結果：" & UF_MsgResult & vbCrLf & _
+        "デバイス：" & GetFrameOptions() & vbCrLf & _
+        "エラーメール：" & UF_UF2BtnCaption & vbCrLf & _
+        "ドメイン：" & UF_UF2Values(1) & vbCrLf & _
+        "入力ミス：" & UF_UF2Values(2) & vbCrLf & _
+        "受信拒否：" & UF_UF2Values(3) & vbCrLf & _
+        "迷惑メールフィルター：" & UF_UF2Values(4)
+
+End Sub
+
+'------------------------
+' Frame内 OptionButton取得
+'------------------------
+Private Function GetFrameOptions() As String
+
+    Dim r As String
+    AppendFrameOptions Frame1, r
+    AppendFrameOptions Frame2, r
+    AppendFrameOptions Frame3, r
+    AppendFrameOptions Frame4, r
+    GetFrameOptions = r
+
+End Function
+
+Private Sub AppendFrameOptions(frm As MSForms.Frame, ByRef r As String)
+
+    Dim c As Control
+    Dim tmp As String
+
+    For Each c In frm.Controls
+        If TypeName(c) = "OptionButton" And c.Value Then
+            If tmp <> "" Then tmp = tmp & "／"
+            tmp = tmp & c.Tag
+        End If
+    Next c
+
+    If tmp <> "" Then
+        If r <> "" Then r = r & "／"
+        r = r & tmp
+    End If
+
+End Sub
+
+'------------------------
+' リセット（CommandButton9）
+'------------------------
+Private Sub CommandButton9_Click()
+
+    Dim c As Control
+
+    For Each c In Me.Controls
+        If TypeName(c) = "OptionButton" Then c.Value = False
+    Next c
+
+    InitGlobals
+    RefreshTextBox
+
+End Sub
+
+
+'====================================================================
+'【UserForm2】追加情報入力
+'====================================================================
+Option Explicit
+
+Private Function CheckText(flg As Boolean) As String
+    CheckText = IIf(flg, "確認済み", "未確認")
+End Function
+
+'------------------------
+' 選択ボタン
+'------------------------
+Private Sub CommandButton1_Click(): SendBtn Me.CommandButton1: End Sub
+Private Sub CommandButton2_Click(): SendBtn Me.CommandButton2: End Sub
+Private Sub CommandButton3_Click(): SendBtn Me.CommandButton3: End Sub
+
+Private Sub SendBtn(btn As MSForms.CommandButton)
+
+    UF_UF2BtnCaption = btn.Caption
+    UserForm1.RefreshTextBox
+    Unload Me
+
+End Sub
+
+'------------------------
+' 入力確定
+'------------------------
+Private Sub CommandButton4_Click()
+
+    UF_UF2Values(1) = Me.ComboBox1.Value
+    UF_UF2Values(2) = CheckText(Me.CheckBox1.Value)
+    UF_UF2Values(3) = CheckText(Me.CheckBox2.Value)
+    UF_UF2Values(4) = CheckText(Me.CheckBox3.Value)
+
+    UserForm1.RefreshTextBox
+    Unload Me
+
+End Sub
+`;
 
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
