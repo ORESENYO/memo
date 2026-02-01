@@ -1,0 +1,205 @@
+/* ========= Base ========= */
+:root{
+  --font-ui: "Meiryo UI", sans-serif;
+  --label-size: 20pt;
+  --text-size: 10pt;
+  --gap: 8px;
+  --border: 1px solid #999;
+  --border-soft: 1px solid #ccc;
+  --bg: #f5f5f5;
+  --active: #0078d4;
+}
+
+body{
+  font-family: var(--font-ui);
+  margin: 20px;
+  color: #111;
+}
+
+.section{ margin-bottom: 24px; }
+.label{
+  font-size: var(--label-size);
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.buttons{
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+
+button{
+  padding: 8px 14px;
+  font-size: var(--text-size);
+  cursor: pointer;
+  border: var(--border);
+  background: var(--bg);
+  border-radius: 4px;
+}
+button.active{
+  background: var(--active);
+  color: #fff;
+  border-color: var(--active);
+}
+
+/* 未実装：クリック可能だがグレー表示 */
+button.disabled{
+  background: #ddd;
+  color: #888;
+}
+
+/* ========= Accordion ========= */
+.accordion{
+  margin-top: 10px;
+  padding: 10px;
+  border: var(--border-soft);
+  display: none;
+  border-radius: 4px;
+}
+.accordion label{
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--text-size);
+  cursor: pointer;
+}
+
+/* ========= Hearing Result ========= */
+textarea#resultText{
+  width: 100%;
+  height: 180px;
+  font-size: var(--text-size);
+  box-sizing: border-box;
+  padding: 10px;
+  resize: vertical;
+}
+
+.footer-buttons{
+  display: flex;
+  gap: 12px;
+}
+
+/* ========= Modal ========= */
+.modal{
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1000;
+}
+.modal-content{
+  background: #fff;
+  width: 640px;
+  max-width: calc(100% - 24px);
+  max-height: 70vh;
+  margin: 80px auto;
+  padding: 16px;
+  border-radius: 6px;
+
+  /* 横スクロール不要 */
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  font-size: var(--text-size);
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Tabs */
+.tabs{
+  display: flex;
+  border-bottom: var(--border-soft);
+  margin-bottom: 10px;
+  gap: 0;
+}
+.tab{
+  padding: 6px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.tab.active{
+  border-bottom: 2px solid var(--active);
+  font-weight: bold;
+}
+
+/* Mail Preview */
+.preview-block{
+  border: var(--border-soft);
+  border-radius: 4px;
+  padding: 10px;
+}
+.preview-row{ margin-bottom: 10px; }
+.preview-label{
+  font-weight: bold;
+  margin-bottom: 4px;
+  display: block;
+}
+.preview-ta-subject{
+  width: 100%;
+  font-size: var(--text-size);
+  line-height: 1.6;              /* ★ フォントに対する行高 */
+  height: calc(1.6em + 16px);    /* ★ 1行分 + padding */
+  padding: 8px;
+  box-sizing: border-box;
+
+  resize: none;                  /* リサイズ不可 */
+  overflow: hidden;              /* スクロールバー非表示 */
+  white-space: nowrap;           /* 改行させない */
+}
+
+.preview-ta-body{
+  width: 100%;
+  height: 220px;
+  font-size: var(--text-size);
+  padding: 8px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+/* Confirm button fixed left-bottom inside modal */
+.modal-fixed-actions{
+  position: sticky; /* スクロールしても下に張り付く */
+  bottom: 0;
+  background: #fff;
+  padding-top: 10px;
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-start; /* 左下固定 */
+  gap: 8px;
+  border-top: var(--border-soft);
+}
+
+/* Form controls (Tab4) */
+.form-row{ margin-bottom: 12px; }
+select, input[type="text"]{
+  font-size: var(--text-size);
+  padding: 6px;
+  min-width: 260px;
+  box-sizing: border-box;
+}
+
+/* Error message modal table */
+.search-box{
+  width: 100%;
+  padding: 8px;
+  font-size: var(--text-size);
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+.error-table{
+  width: 100%;
+  border-collapse: collapse;
+}
+.error-table td{
+  border: var(--border-soft);
+  padding: 8px;
+}
+.error-row{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Small helper text */
+.small{ font-size: var(--text-size); color:#333; }

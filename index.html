@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>問い合わせ対応ツール</title>
+
+<link rel="stylesheet" href="Style.css" />
+</head>
+
+<body>
+
+<!-- ■問い合わせ内容 -->
+<div class="section">
+  <div class="label">■ 問い合わせ内容</div>
+  <div class="buttons" id="inquiryButtons">
+    <button onclick="onInquiryClick(this,'認証コード未着')">認証コード未着</button>
+    <button onclick="onInquiryClick(this,'エラーメッセージ')">エラーメッセージ</button>
+    <button onclick="onInquiryClick(this,'移行対象判定')">移行対象判定</button>
+    <button class="disabled" onclick="alert('未実装です')">未実装</button>
+    <button class="disabled" onclick="alert('未実装です')">未実装</button>
+    <button class="disabled" onclick="alert('未実装です')">未実装</button>
+  </div>
+</div>
+
+<!-- ■利用環境 -->
+<div class="section">
+  <div class="label">■ 利用環境</div>
+  <div class="buttons" id="deviceButtons">
+    <button onclick="toggleDevice(this,'iPhone')">iPhone</button>
+    <button onclick="toggleDevice(this,'Android')">Android</button>
+    <button onclick="toggleDevice(this,'パソコン')">パソコン</button>
+    <button onclick="toggleDevice(this,'タブレット')">タブレット</button>
+    <button onclick="toggleDevice(this,'TV')">TV</button>
+  </div>
+
+  <div id="accordion" class="accordion">
+    <div id="accordionContent"></div>
+  </div>
+</div>
+
+<!-- ■ヒアリング結果 -->
+<div class="section">
+  <div class="label">■ ヒアリング結果</div>
+  <textarea id="resultText" readonly></textarea>
+</div>
+
+<!-- footer -->
+<div class="section footer-buttons">
+  <button onclick="alert('後で実装します')">エスカレーション</button>
+  <button onclick="copyText()">コピー</button>
+  <button onclick="resetAll()">リセット</button>
+</div>
+
+<!-- ===== 認証コード未着モーダル ===== -->
+<div id="mailModal" class="modal" onclick="closeModal(event,'mailModal')">
+  <div class="modal-content" onclick="event.stopPropagation()">
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchMailTab(this,'S_MIG')">Sアカ移行</div>
+      <div class="tab" onclick="switchMailTab(this,'S_NEW')">Sアカ新規</div>
+      <div class="tab" onclick="switchMailTab(this,'J_NEW')">Jアカ新規</div>
+      <div class="tab" onclick="switchMailTab(this,'NO_RECV')">受信なし</div>
+    </div>
+
+    <div id="mailPreview" class="preview-block">
+      <div class="preview-row">
+        <span class="preview-label">件名</span>
+        <textarea id="mailSubjectTA" class="preview-ta-subject" readonly></textarea>
+      </div>
+      <div class="preview-row">
+        <span class="preview-label">本文</span>
+        <textarea id="mailBodyTA" class="preview-ta-body" readonly></textarea>
+      </div>
+    </div>
+
+    <div id="mailExtra" style="display:none;">
+      <div class="form-row">
+        <strong>ドメイン（＠以降）</strong><p>
+        <select id="extraDomain" onchange="onDomainSelectChange()">
+          <option value="">選択してください</option>
+          <option value="@gmail.com">@gmail.com</option>
+          <option value="@yahoo.co.jp">@yahoo.co.jp</option>
+          <option value="@outlook.com">@outlook.com</option>
+          <option value="__manual__">その他(手入力)</option>
+        </select>
+        <div id="domainManualWrap" style="display:none; margin-top:8px;">
+          <input id="extraDomainManual" type="text" placeholder="例）@example.com">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label><input id="cbMistake" type="checkbox"> メールアドレスの入力ミス</label><br>
+        <label><input id="cbReject" type="checkbox"> 受信拒否</label><br>
+        <label><input id="cbSpam" type="checkbox"> 迷惑メールフィルター</label>
+      </div>
+    </div>
+
+    <div class="modal-fixed-actions">
+      <button onclick="confirmMailModal()">確定</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== エラーメッセージモーダル ===== -->
+<div id="errorModal" class="modal" onclick="closeModal(event,'errorModal')">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <input id="errorSearch" class="search-box" type="text"
+      placeholder="検索" oninput="renderErrorTable()">
+    <table class="error-table">
+      <tbody id="errorMsgTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
