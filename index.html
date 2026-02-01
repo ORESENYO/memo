@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>VBAコード表示</title>
+    <title>コード表示</title>
 </head>
 <body>
 
@@ -10,187 +10,831 @@
 
 <script>
 function openText() {
-    const text = `'====================================================================
-'【Module1】共通変数・初期化・起動
-'====================================================================
-Option Explicit
+    const text = `
+★★★★★★★★★★　index.html　★★★★★★★★★★
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>【NGH】問い合わせ対応ツール</title>
 
-'--- UserForm間で共有する値 ---
-Public UF_ButtonCaption As String      ' UserForm1：押されたボタン
-Public UF_MsgResult As String          ' Yes / No 結果
-Public UF_UF2BtnCaption As String      ' UserForm2：選択ボタン
-Public UF_UF2Values(1 To 4) As String  ' UserForm2：入力値
+<link rel="stylesheet" href="Style.css" />
+</head>
 
-'--- 起動 ---
-Sub Show()
-    InitGlobals
-    UserForm1.Show vbModeless
-End Sub
+<body>
 
-'--- 初期化 ---
-Sub InitGlobals()
-    Dim i As Long
+<!-- ■問い合わせ内容 -->
+<div class="section">
+  <div class="label">■ 問い合わせ内容</div>
+  <div class="buttons" id="inquiryButtons">
+    <button id="btnInquiryMail" onclick="onInquiryClick(this,'認証コード未着')">認証コード未着</button>
+    <button id="btnInquiryMsg" onclick="onInquiryClick(this,'エラーメッセージ')">エラーメッセージ</button>
+    <button onclick="onMigrationJudge(this)">移行対象判定</button>
 
-    UF_ButtonCaption = ""
-    UF_MsgResult = ""
-    UF_UF2BtnCaption = ""
+    <button class="disabled" onclick="notImplemented()">未実装</button>
+    <button class="disabled" onclick="notImplemented()">未実装</button>
+    <button class="disabled" onclick="notImplemented()">未実装</button>
+  </div>
+</div>
 
-    For i = 1 To 4
-        UF_UF2Values(i) = ""
-    Next i
-End Sub
+<!-- ■利用環境 -->
+<div class="section">
+  <div class="label">■ 利用環境</div>
+  <div class="buttons" id="deviceButtons">
+    <button onclick="toggleDevice(this,'iPhone')">iPhone</button>
+    <button onclick="toggleDevice(this,'Android')">Android</button>
+    <button onclick="toggleDevice(this,'パソコン')">パソコン</button>
+    <button onclick="toggleDevice(this,'タブレット')">タブレット</button>
+    <button onclick="toggleDevice(this,'TV')">TV</button>
+  </div>
+
+  <div id="accordion" class="accordion">
+    <div id="accordionContent"></div>
+  </div>
+</div>
+
+<!-- ■ヒアリング結果 -->
+<div class="section">
+  <div class="label">■ ヒアリング結果</div>
+  <textarea id="resultText" readonly></textarea>
+</div>
+
+<!-- footer -->
+<div class="section footer-buttons">
+  <button onclick="alert('（エスカレーションは後で実装します）')">エスカレーション</button>
+  <button onclick="copyText()">コピー</button>
+  <button onclick="resetAll()">リセット</button>
+</div>
+
+<!-- ===== 認証コード未着モーダル ===== -->
+<div id="mailModal" class="modal" onclick="closeModal(event,'mailModal')">
+  <div class="modal-content" onclick="event.stopPropagation()">
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchMailTab(this,'S_MIG')">Sアカ移行</div>
+      <div class="tab" onclick="switchMailTab(this,'S_NEW')">Sアカ新規</div>
+      <div class="tab" onclick="switchMailTab(this,'J_NEW')">Jアカ新規</div>
+      <div class="tab" onclick="switchMailTab(this,'NO_RECV')">受信なし</div>
+    </div>
+
+    <!-- タブ1/2/3：メールプレビュー（編集不可） -->
+    <div id="mailPreview" class="preview-block">
+      <div class="preview-row">
+        <span class="preview-label">件名</span>
+        <textarea id="mailSubjectTA" class="preview-ta-subject" readonly></textarea>
+      </div>
+
+      <div class="preview-row">
+        <span class="preview-label">本文</span>
+        <textarea id="mailBodyTA" class="preview-ta-body" readonly></textarea>
+      </div>
+    </div>
+
+    <!-- タブ4：受信なし -->
+    <div id="mailExtra" style="display:none;">
+      <div class="form-row">
+        <strong>ドメイン（＠以降の文字列）</strong><p>
+        <select id="extraDomain" onchange="onDomainSelectChange()">
+          <option value="">選択してください</option>
+          <option value="@gmail.com">@gmail.com</option>
+          <option value="@yahoo.co.jp">@yahoo.co.jp</option>
+          <option value="@icloud.com">@icloud.com</option>
+          <option value="@au.com">@au.com</option>
+          <option value="@ezweb.ne.jp">@ezweb.ne.jp</option>
+          <option value="@softbank.ne.jp">@softbank.ne.jp</option>
+          <option value="@i.softbank.ne.jp">@i.softbank.ne.jp</option>
+          <option value="@docomo.ne.jp">@docomo.ne.jp</option>
+          <option value="@outlook.com">@outlook.com</option>
+          <option value="__manual__">その他（手入力）</option>
+        </select>
+
+        <div id="domainManualWrap" style="display:none; margin-top:8px;">
+          <input id="extraDomainManual" type="text" placeholder="例）@example.com">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label><input id="cbMistake" type="checkbox"> メールアドレスの入力ミス</label><br>
+        <label><input id="cbReject" type="checkbox"> 受信拒否</label><br>
+        <label><input id="cbSpam" type="checkbox"> 迷惑メールフィルター</label>
+      </div>
+    </div>
+
+    <!-- 確定ボタン（左下固定） -->
+    <div class="modal-fixed-actions">
+      <button onclick="confirmMailModal()">確定</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== エラーメッセージモーダル ===== -->
+<div id="errorModal" class="modal" onclick="closeModal(event,'errorModal')">
+  <div class="modal-content" onclick="event.stopPropagation()">
+
+    <input id="errorSearch" class="search-box" type="text"
+      placeholder="検索（例：E002 / 認証）" oninput="renderErrorTable()">
+
+    <table class="error-table">
+      <tbody id="errorMsgTableBody"></tbody>
+    </table>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
+
+★★★★★★★★★★　Style.css　★★★★★★★★★★
+/* ========= Base ========= */
+:root{
+  --font-ui: "Meiryo UI", sans-serif;
+  --label-size: 20pt;
+  --text-size: 10pt;
+  --gap: 8px;
+  --border: 1px solid #999;
+  --border-soft: 1px solid #ccc;
+  --bg: #f5f5f5;
+  --active: #0078d4;
+}
+
+body{
+  font-family: var(--font-ui);
+  margin: 20px;
+  color: #111;
+}
+
+.section{ margin-bottom: 24px; }
+.label{
+  font-size: var(--label-size);
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.buttons{
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+
+button{
+  padding: 8px 14px;
+  font-size: var(--text-size);
+  cursor: pointer;
+  border: var(--border);
+  background: var(--bg);
+  border-radius: 4px;
+}
+button.active{
+  background: var(--active);
+  color: #fff;
+  border-color: var(--active);
+}
+
+/* 未実装：クリック可能だがグレー表示 */
+button.disabled{
+  background: #ddd;
+  color: #888;
+}
+
+/* ========= Accordion ========= */
+.accordion{
+  margin-top: 10px;
+  padding: 10px;
+  border: var(--border-soft);
+  display: none;
+  border-radius: 4px;
+}
+.accordion label{
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--text-size);
+  cursor: pointer;
+}
+
+/* ========= Hearing Result ========= */
+textarea#resultText{
+  width: 100%;
+  height: 180px;
+  font-size: var(--text-size);
+  box-sizing: border-box;
+  padding: 10px;
+  resize: vertical;
+}
+
+.footer-buttons{
+  display: flex;
+  gap: 12px;
+}
+
+/* ========= Modal ========= */
+.modal{
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1000;
+}
+.modal-content{
+  background: #fff;
+  width: 640px;
+  max-width: calc(100% - 24px);
+  max-height: 70vh;
+  margin: 80px auto;
+  padding: 16px;
+  border-radius: 6px;
+
+  /* 横スクロール不要 */
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  font-size: var(--text-size);
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Tabs */
+.tabs{
+  display: flex;
+  border-bottom: var(--border-soft);
+  margin-bottom: 10px;
+  gap: 0;
+}
+.tab{
+  padding: 6px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.tab.active{
+  border-bottom: 2px solid var(--active);
+  font-weight: bold;
+}
+
+/* Mail Preview */
+.preview-block{
+  border: var(--border-soft);
+  border-radius: 4px;
+  padding: 10px;
+}
+.preview-row{ margin-bottom: 10px; }
+.preview-label{
+  font-weight: bold;
+  margin-bottom: 4px;
+  display: block;
+}
+.preview-ta-subject{
+  width: 100%;
+  font-size: var(--text-size);
+  line-height: 1.6;              /* ★ フォントに対する行高 */
+  height: calc(1.6em + 16px);    /* ★ 1行分 + padding */
+  padding: 8px;
+  box-sizing: border-box;
+
+  resize: none;                  /* リサイズ不可 */
+  overflow: hidden;              /* スクロールバー非表示 */
+  white-space: nowrap;           /* 改行させない */
+}
+
+.preview-ta-body{
+  width: 100%;
+  height: 220px;
+  font-size: var(--text-size);
+  padding: 8px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+/* Confirm button fixed left-bottom inside modal */
+.modal-fixed-actions{
+  position: sticky; /* スクロールしても下に張り付く */
+  bottom: 0;
+  background: #fff;
+  padding-top: 10px;
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-start; /* 左下固定 */
+  gap: 8px;
+  border-top: var(--border-soft);
+}
+
+/* Form controls (Tab4) */
+.form-row{ margin-bottom: 12px; }
+select, input[type="text"]{
+  font-size: var(--text-size);
+  padding: 6px;
+  min-width: 260px;
+  box-sizing: border-box;
+}
+
+/* Error message modal table */
+.search-box{
+  width: 100%;
+  padding: 8px;
+  font-size: var(--text-size);
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+.error-table{
+  width: 100%;
+  border-collapse: collapse;
+}
+.error-table td{
+  border: var(--border-soft);
+  padding: 8px;
+}
+.error-row{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Small helper text */
+.small{ font-size: var(--text-size); color:#333; }
+
+★★★★★★★★★★　app.js　★★★★★★★★★★
+/* =========================
+   データ
+========================= */
+const MAIL_TEMPLATES = {
+  S_MIG: {
+    subject: `アカウント移行手続き 内容確認のお願い`,
+    body: `迷惑メールフォルダをご確認ください。`
+  },
+  S_NEW: {
+    subject: `メールアドレスについての確認`,
+    body: `受信拒否設定をご確認ください。`
+  },
+  J_NEW: {
+    subject: `メールアドレス重複のお知らせ`,
+    body: `時間をおいて再送をお試しください。`
+  }
+};
+
+const ERROR_MESSAGES = [
+  `E001：認証コードが無効です`,
+  `E002：認証コードの有効期限切れ`,
+  `E003：メールアドレスが正しくありません`,
+  `E004：サーバーエラーが発生しました`,
+  `E005：通信がタイムアウトしました`
+];
+
+/* =========================
+   State
+========================= */
+const state = {
+  inquiryButton: "",
+  inquiryPicked: "",
+  migrationJudge: "",
+  domain: "",
+  mailMistake: "",
+  reject: "",
+  spamFilter: "",
+  devices: {
+    iPhone: { selected:false, detail:"" },
+    Android: { selected:false, detail:"" },
+    パソコン: { selected:false, detail:"" },
+    タブレット: { selected:false, detail:"" },
+    TV: { selected:false, detail:"" }
+  },
+  activeDevice: "",
+  activeMailKey: "S_MIG"
+};
+
+render();
+
+/* =========================
+   共通
+========================= */
+function notImplemented() {
+  alert("未実装です。");
+}
+
+function closeModal(e, id) {
+  document.getElementById(id).style.display = "none";
+}
+
+/* =========================
+   問い合わせ内容（認証コード未着 / エラーメッセージ）
+========================= */
+function onInquiryClick(btn, value) {
+  // active 切替（UIはそのまま）
+  document.querySelectorAll("#inquiryButtons button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+
+  state.inquiryButton = value;
+  state.inquiryPicked = "";
+
+  if (value === "認証コード未着") {
+    openMailModal();
+  } else if (value === "エラーメッセージ") {
+    openErrorModal();
+  }
+
+  render();
+}
+
+/* =========================
+   ★修正①：移行対象判定（ボタン active ＋ MsgBox分岐）
+========================= */
+function onMigrationJudge(btn) {
+  /* ===== ① 先にボタンを選択状態にする ===== */
+  document.querySelectorAll("#inquiryButtons button")
+    .forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+
+  state.inquiryButton = "移行対象判定";
+  state.inquiryPicked = "";
+
+  render(); // ← ここで一度描画
+
+  /* ===== ② 描画後に MsgBox を出す ===== */
+  setTimeout(() => {
+
+    if (!confirm("旧プラスID発行済みでしたか？")) {
+      const msg = "新規登録を案内してください";
+      state.migrationJudge = msg;
+      state.inquiryPicked = msg;
+      alert(msg);
+      render();
+      return;
+    }
+
+    if (!confirm("移行案内メール確認済み？")) {
+      const msg = "ガイダンス2でアドレス確認後の手続きとなることを案内してください";
+      state.migrationJudge = msg;
+      state.inquiryPicked = msg;
+      alert(msg);
+      render();
+      return;
+    }
+
+    if (confirm("受信しているアドレスは現在も使用可能ですか？")) {
+      const msg = "移行手続きを進めていただくよう案内してください";
+      state.migrationJudge = msg;
+      state.inquiryPicked = msg;
+      alert(msg);
+    } else {
+      const msg = "ガイダンス2で連携解除後の新規登録となることを案内してください";
+      state.migrationJudge = msg;
+      state.inquiryPicked = msg;
+      alert(msg);
+    }
+
+    render();
+
+  }, 0); // ← これが超重要
+}
 
 
-'====================================================================
-'【UserForm1】メイン画面
-'====================================================================
-Option Explicit
+/* =========================
+   利用環境（トグル＋アコーディオン）
+========================= */
+function toggleDevice(btn, name) {
+  const d = state.devices[name];
+  d.selected = !d.selected;
+  btn.classList.toggle("active", d.selected);
 
-Private Sub UserForm_Initialize()
-    RefreshTextBox
-End Sub
+  if (d.selected) {
+    state.activeDevice = name;
+    buildAccordion(name);
+  } else {
+    d.detail = "";
+    state.activeDevice = "";
+    document.getElementById("accordion").style.display = "none";
+  }
+  render();
+}
 
-'------------------------
-' CommandButton1
-'------------------------
-Private Sub CommandButton1_Click()
+function buildAccordion(device) {
+  const acc = document.getElementById("accordion");
+  const content = document.getElementById("accordionContent");
+  content.innerHTML = "";
 
-    UF_ButtonCaption = Me.CommandButton1.Caption
+  let options = [];
+  if (device === "iPhone" || device === "Android") {
+    options = ["Webから操作", "アプリから操作", "Web/アプリから操作"];
+  } else if (device === "パソコン") {
+    options = ["Windows", "Mac"];
+  } else {
+    acc.style.display = "none";
+    return;
+  }
 
-    If AskYesNo("確認しますか？") Then
-        UF_MsgResult = "はい"
-    Else
-        UF_MsgResult = "いいえ"
-    End If
+  options.forEach(opt => {
+    const checked = state.devices[device].detail === opt ? "checked" : "";
+    content.innerHTML += `
+      <label>
+        <input type="radio" name="detail_${device}" ${checked}
+          onclick="selectDetail('${device}','${opt}')">
+        ${opt}
+      </label>
+    `;
+  });
 
-    RefreshTextBox
-    UserForm2.Show vbModeless
+  acc.style.display = "block";
+}
 
-End Sub
+function selectDetail(device, value) {
+  state.devices[device].detail = value;
+  render();
+}
 
-Private Function AskYesNo(msg As String) As Boolean
-    AskYesNo = (MsgBox(msg, vbYesNo + vbQuestion, "確認") = vbYes)
-End Function
+/* =========================
+   認証コード未着モーダル
+========================= */
+function openMailModal() {
+  state.activeMailKey = "S_MIG";
 
-'------------------------
-' OptionButton 即時反映
-'------------------------
-Private Sub OptionButton1_Click(): RefreshTextBox: End Sub
-Private Sub OptionButton2_Click(): RefreshTextBox: End Sub
-Private Sub OptionButton3_Click(): RefreshTextBox: End Sub
-Private Sub OptionButton4_Click(): RefreshTextBox: End Sub
-Private Sub OptionButton5_Click(): RefreshTextBox: End Sub
-Private Sub OptionButton6_Click(): RefreshTextBox: End Sub
-Private Sub OptionButton7_Click(): RefreshTextBox: End Sub
-Private Sub OptionButton8_Click(): RefreshTextBox: End Sub
-Private Sub OptionButton9_Click(): RefreshTextBox: End Sub
-Private Sub OptionButton10_Click(): RefreshTextBox: End Sub
+  // タブ見た目初期化
+  document.querySelectorAll("#mailModal .tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll("#mailModal .tab")[0].classList.add("active");
 
-'------------------------
-' TextBox 表示更新
-'------------------------
-Public Sub RefreshTextBox()
+  applyMailTemplate("S_MIG");
+  showMailPreview();
 
-    Me.TextBox1.Value = _
-        "なんのボタンが押された？：" & UF_ButtonCaption & vbCrLf & _
-        "判定結果：" & UF_MsgResult & vbCrLf & _
-        "デバイス：" & GetFrameOptions() & vbCrLf & _
-        "エラーメール：" & UF_UF2BtnCaption & vbCrLf & _
-        "ドメイン：" & UF_UF2Values(1) & vbCrLf & _
-        "入力ミス：" & UF_UF2Values(2) & vbCrLf & _
-        "受信拒否：" & UF_UF2Values(3) & vbCrLf & _
-        "迷惑メールフィルター：" & UF_UF2Values(4)
+  document.getElementById("mailModal").style.display = "block";
+}
 
-End Sub
+function switchMailTab(tabEl, key) {
+  tabEl.parentNode.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  tabEl.classList.add("active");
 
-'------------------------
-' Frame内 OptionButton取得
-'------------------------
-Private Function GetFrameOptions() As String
+  state.activeMailKey = key;
 
-    Dim r As String
-    AppendFrameOptions Frame1, r
-    AppendFrameOptions Frame2, r
-    AppendFrameOptions Frame3, r
-    AppendFrameOptions Frame4, r
-    GetFrameOptions = r
+  if (key === "NO_RECV") {
+    showMailExtra();
+    return;
+  }
+  showMailPreview();
+  applyMailTemplate(key);
+}
 
-End Function
+function showMailPreview() {
+  document.getElementById("mailPreview").style.display = "block";
+  document.getElementById("mailExtra").style.display = "none";
+}
+function showMailExtra() {
+  document.getElementById("mailPreview").style.display = "none";
+  document.getElementById("mailExtra").style.display = "block";
+}
 
-Private Sub AppendFrameOptions(frm As MSForms.Frame, ByRef r As String)
+function applyMailTemplate(key) {
+  const t = MAIL_TEMPLATES[key] || { subject: "", body: "" };
+  document.getElementById("mailSubjectTA").value = t.subject;
+  document.getElementById("mailBodyTA").value = t.body;
+}
 
-    Dim c As Control
-    Dim tmp As String
+function onDomainSelectChange() {
+  const sel = document.getElementById("extraDomain").value;
+  document.getElementById("domainManualWrap").style.display = (sel === "__manual__") ? "block" : "none";
+  if (sel !== "__manual__") document.getElementById("extraDomainManual").value = "";
+}
 
-    For Each c In frm.Controls
-        If TypeName(c) = "OptionButton" And c.Value Then
-            If tmp <> "" Then tmp = tmp & "／"
-            tmp = tmp & c.Tag
-        End If
-    Next c
+/* =========================
+   ★修正②：タブ1/2/3 確定ボタン分岐 MsgBox（必ず表示）
+========================= */
+function confirmMailModal() {
+  // 問い合わせ内容を固定
+  state.inquiryButton = "認証コード未着";
 
-    If tmp <> "" Then
-        If r <> "" Then r = r & "／"
-        r = r & tmp
-    End If
+  // 受信なし（フォーム反映）
+  if (state.activeMailKey === "NO_RECV") {
+    const sel = document.getElementById("extraDomain").value;
+    const manual = document.getElementById("extraDomainManual").value.trim();
+    state.domain = (sel === "__manual__") ? manual : sel;
 
-End Sub
+    state.mailMistake = document.getElementById("cbMistake").checked ? "確認済み" : "未確認";
+    state.reject     = document.getElementById("cbReject").checked ? "確認済み" : "未確認";
+    state.spamFilter = document.getElementById("cbSpam").checked ? "確認済み" : "未確認";
 
-'------------------------
-' リセット（CommandButton9）
-'------------------------
-Private Sub CommandButton9_Click()
+    state.inquiryPicked = "受信なし";
+    document.getElementById("mailModal").style.display = "none";
+    render();
+    return;
+  }
 
-    Dim c As Control
+  // タブ1/2/3：テンプレ件名を選択結果として保持
+  state.inquiryPicked = document.getElementById("mailSubjectTA").value.trim();
 
-    For Each c In Me.Controls
-        If TypeName(c) = "OptionButton" Then c.Value = False
-    Next c
+  // タブ別 MsgBox 分岐
+  if (state.activeMailKey === "S_MIG") {
+    runTab1Flow();
+  } else if (state.activeMailKey === "S_NEW") {
+    runTab2Flow();
+  } else if (state.activeMailKey === "J_NEW") {
+    runTab3Flow();
+  }
 
-    InitGlobals
-    RefreshTextBox
+  document.getElementById("mailModal").style.display = "none";
+  render();
+}
 
-End Sub
+function runTab1Flow() {
+  // Q1
+  if (!confirm("旧プラスID発行済みでしたか？")) {
+    const msg = "手続きの導線に誤りがあります。新規登録に進んでください";
+    alert(msg);
+    state.migrationJudge = msg;
+    return;
+  }
+  // Q2
+  if (!confirm("移行案内メール確認済み？")) {
+    const msg = "入力のアドレスに誤りがある可能性があります。ガイダンス2で確認してください";
+    alert(msg);
+    state.migrationJudge = msg;
+    return;
+  }
+  // Q3
+  if (confirm("移行案内メールを受信しているアドレスと同アドレスで手続きを行っていますか？")) {
+    // Q4
+    if (confirm("パスリセ経由で認証コードは届く？")) {
+      const msg = "PW変更後、ログインしてご利用ください";
+      alert(msg);
+      state.migrationJudge = msg;
+    } else {
+      const msg = "登録表記が異なる可能性があります。ガイダンス2で確認してください";
+      alert(msg);
+      state.migrationJudge = msg;
+    }
+  } else {
+    // Q5
+    if (confirm("移行案内メールを受信しているアドレスは現在も使用可能ですか？")) {
+      const msg = "同じアドレスで再度移行手続きを進めてください";
+      alert(msg);
+      state.migrationJudge = msg;
+    } else {
+      const msg = "ガイダンス2で連携解除";
+      alert(msg);
+      state.migrationJudge = msg;
+    }
+  }
+}
 
+function runTab2Flow() {
+  if (confirm("パスリセ経由で認証コードは届く？")) {
+    const msg = "PW変更後、ログインしてご利用ください";
+    alert(msg);
+    state.migrationJudge = msg;
+  } else {
+    const msg = "移行対象のアドレスの可能性があります。移行手続きをお試しください";
+    alert(msg);
+    state.migrationJudge = msg;
+  }
+}
 
-'====================================================================
-'【UserForm2】追加情報入力
-'====================================================================
-Option Explicit
+function runTab3Flow() {
+  if (confirm("同アドレスで照合NGのメールを受信していますか？")) {
+    const msg = "ガイダンス2で確認";
+    alert(msg);
+    state.migrationJudge = msg;
+    return;
+  }
+  if (confirm("同アドレスで初期PWのメールを受信していますか？")) {
+    const msg = "そのJアカをご利用ください";
+    alert(msg);
+    state.migrationJudge = msg;
+    return;
+  }
+  if (!confirm("旧プラスID発行済みでしたか？")) {
+    const msg = "ガイダンス2で確認";
+    alert(msg);
+    state.migrationJudge = msg;
+    return;
+  }
+  if (!confirm("移行案内メール確認済み？")) {
+    const msg = "ガイダンス2で確認";
+    alert(msg);
+    state.migrationJudge = msg;
+    return;
+  }
+  if (confirm("移行案内メールを受信しているアドレスと同アドレスで手続きを行っていますか？")) {
+    const msg = "移行手続きを完了していただければ、Jアカの作成は不要です";
+    alert(msg);
+    state.migrationJudge = msg;
+  } else {
+    const msg = "ガイダンス2で確認";
+    alert(msg);
+    state.migrationJudge = msg;
+  }
+}
 
-Private Function CheckText(flg As Boolean) As String
-    CheckText = IIf(flg, "確認済み", "未確認")
-End Function
+/* =========================
+   エラーメッセージモーダル
+========================= */
+function openErrorModal() {
+  document.getElementById("errorSearch").value = "";
+  renderErrorTable();
+  document.getElementById("errorModal").style.display = "block";
+}
 
-'------------------------
-' 選択ボタン
-'------------------------
-Private Sub CommandButton1_Click(): SendBtn Me.CommandButton1: End Sub
-Private Sub CommandButton2_Click(): SendBtn Me.CommandButton2: End Sub
-Private Sub CommandButton3_Click(): SendBtn Me.CommandButton3: End Sub
+function renderErrorTable() {
+  const q = document.getElementById("errorSearch").value.trim().toLowerCase();
+  const tbody = document.getElementById("errorMsgTableBody");
+  tbody.innerHTML = "";
 
-Private Sub SendBtn(btn As MSForms.CommandButton)
+  ERROR_MESSAGES.forEach(msg => {
+    if (q && !msg.toLowerCase().includes(q)) return;
+    tbody.innerHTML += `
+      <tr>
+        <td>
+          <div class="error-row">
+            <span>${msg}</span>
+            <button onclick="selectErrorMsg(\`${msg}\`)">確定</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
 
-    UF_UF2BtnCaption = btn.Caption
-    UserForm1.RefreshTextBox
-    Unload Me
+  if (!tbody.firstChild) {
+    tbody.innerHTML = `<tr><td>該当なし</td></tr>`;
+  }
+}
 
-End Sub
+function selectErrorMsg(msg) {
+  state.inquiryButton = "エラーメッセージ";
+  state.inquiryPicked = msg;
 
-'------------------------
-' 入力確定
-'------------------------
-Private Sub CommandButton4_Click()
+  document.getElementById("errorModal").style.display = "none";
+  render();
+}
 
-    UF_UF2Values(1) = Me.ComboBox1.Value
-    UF_UF2Values(2) = CheckText(Me.CheckBox1.Value)
-    UF_UF2Values(3) = CheckText(Me.CheckBox2.Value)
-    UF_UF2Values(4) = CheckText(Me.CheckBox3.Value)
+/* =========================
+   出力（テキスト構造は必ずこれ）
+   【問い合わせ内容】ボタン名（モーダル内での選択結果）
+========================= */
+function render() {
+  const envs = [];
+  for (const k in state.devices) {
+    if (state.devices[k].selected) {
+      let t = k;
+      if (state.devices[k].detail) t += `（${state.devices[k].detail}）`;
+      envs.push(t);
+    }
+  }
 
-    UserForm1.RefreshTextBox
-    Unload Me
+  const inquiryLine =
+    state.inquiryButton
+      ? `${state.inquiryButton}${state.inquiryPicked ? `（${state.inquiryPicked}）` : ""}`
+      : "";
 
-End Sub`;
+  document.getElementById("resultText").value =
+`【問い合わせ内容】${inquiryLine}
+【利用環境】${envs.join("／")}
+【移行対象判定】${state.migrationJudge}
+【ドメイン】${state.domain}
+【メールアドレスの入力ミス】${state.mailMistake}
+【受信拒否】${state.reject}
+【迷惑メールフィルター】${state.spamFilter}`;
+}
+
+/* =========================
+   コピー / リセット
+========================= */
+function copyText() {
+  const ta = document.getElementById("resultText");
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, ta.value.length);
+  document.execCommand("copy");
+}
+
+function resetAll() {
+  // active解除
+  document.querySelectorAll("#inquiryButtons button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll("#deviceButtons button").forEach(b => b.classList.remove("active"));
+  document.getElementById("accordion").style.display = "none";
+
+  // state初期化
+  state.inquiryButton = "";
+  state.inquiryPicked = "";
+  state.migrationJudge = "";
+  state.domain = "";
+  state.mailMistake = "";
+  state.reject = "";
+  state.spamFilter = "";
+  state.activeDevice = "";
+  state.activeMailKey = "S_MIG";
+  for (const k in state.devices) {
+    state.devices[k].selected = false;
+    state.devices[k].detail = "";
+  }
+
+  // 受信なしUI初期化
+  document.getElementById("extraDomain").value = "";
+  document.getElementById("extraDomainManual").value = "";
+  document.getElementById("domainManualWrap").style.display = "none";
+  document.getElementById("cbMistake").checked = false;
+  document.getElementById("cbReject").checked = false;
+  document.getElementById("cbSpam").checked = false;
+
+  render();
+}
+
+    `;
 
     const html = `<pre>${text}</pre>`;
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
