@@ -117,7 +117,6 @@ textarea#resultText{
   display: flex;
   border-bottom: var(--border-soft);
   margin-bottom: 10px;
-  gap: 0;
 }
 .tab{
   padding: 6px 12px;
@@ -162,7 +161,7 @@ textarea#resultText{
   resize: vertical;
 }
 
-/* Confirm button fixed left-bottom inside modal */
+/* ========= Confirm Button (Fixed Size) ========= */
 .modal-fixed-actions{
   position: sticky;
   bottom: 0;
@@ -173,6 +172,15 @@ textarea#resultText{
   justify-content: flex-start;
   gap: 8px;
   border-top: var(--border-soft);
+}
+
+.modal-fixed-actions button{
+  width: 120px;        /* ★ 横幅固定 */
+  height: 36px;        /* ★ 高さ固定 */
+  padding: 0;          /* ★ サイズ厳密化 */
+  font-size: var(--text-size);
+  line-height: 36px;   /* ★ 縦中央揃え */
+  text-align: center;
 }
 
 /* Form controls (Tab4) */
