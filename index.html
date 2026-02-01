@@ -45,7 +45,7 @@ button{
   background: var(--bg);
   border-radius: 4px;
 
-  /* ★ ボタン文字の縦並び防止 */
+  /* ★ 縦並び防止（これが本命） */
   white-space: nowrap;
 }
 
@@ -72,17 +72,14 @@ button.disabled{
   display: block;
   margin-bottom: 6px;
   font-size: var(--text-size);
-  cursor: pointer;
 }
 
-/* ========= Hearing Result ========= */
-textarea#resultText{
+/* ========= Result ========= */
+#resultText{
   width: 100%;
   height: 180px;
-  font-size: var(--text-size);
-  box-sizing: border-box;
   padding: 10px;
-  resize: vertical;
+  box-sizing: border-box;
 }
 
 .footer-buttons{
@@ -95,9 +92,9 @@ textarea#resultText{
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 1000;
+  background: rgba(0,0,0,.4);
 }
+
 .modal-content{
   background: #fff;
   width: 640px;
@@ -107,12 +104,9 @@ textarea#resultText{
   padding: 16px;
   border-radius: 6px;
   overflow-y: auto;
-  overflow-x: hidden;
-  font-size: var(--text-size);
-  box-sizing: border-box;
 }
 
-/* Tabs */
+/* ========= Tabs ========= */
 .tabs{
   display: flex;
   border-bottom: var(--border-soft);
@@ -121,55 +115,43 @@ textarea#resultText{
 .tab{
   padding: 6px 12px;
   cursor: pointer;
-  user-select: none;
 }
 .tab.active{
   border-bottom: 2px solid var(--active);
   font-weight: bold;
 }
 
-/* Mail Preview */
+/* ========= Preview ========= */
 .preview-block{
   border: var(--border-soft);
-  border-radius: 4px;
   padding: 10px;
+  border-radius: 4px;
 }
-.preview-row{ margin-bottom: 10px; }
 .preview-label{
   font-weight: bold;
-  margin-bottom: 4px;
   display: block;
+  margin-bottom: 4px;
 }
 .preview-ta-subject{
   width: 100%;
-  font-size: var(--text-size);
-  line-height: 1.6;
   height: calc(1.6em + 16px);
   padding: 8px;
-  box-sizing: border-box;
-  resize: none;
-  overflow: hidden;
   white-space: nowrap;
+  resize: none;
 }
 .preview-ta-body{
   width: 100%;
   height: 220px;
-  font-size: var(--text-size);
   padding: 8px;
-  box-sizing: border-box;
-  resize: vertical;
 }
 
-/* ========= Confirm Button (Fixed + No Wrap) ========= */
+/* ========= Confirm Button ========= */
 .modal-fixed-actions{
   position: sticky;
   bottom: 0;
   background: #fff;
   padding-top: 10px;
   margin-top: 10px;
-  display: flex;
-  justify-content: flex-start;
-  gap: 8px;
   border-top: var(--border-soft);
 }
 
@@ -177,55 +159,32 @@ textarea#resultText{
   width: 120px;
   height: 36px;
   padding: 0;
-  font-size: var(--text-size);
   line-height: 36px;
   text-align: center;
 
-  /* ★ レスポンシブ縦並び防止 */
+  /* ★ ここでも改行禁止 */
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-
-/* Form controls */
-.form-row{ margin-bottom: 12px; }
-select, input[type="text"]{
-  font-size: var(--text-size);
-  padding: 6px;
-  min-width: 260px;
-  box-sizing: border-box;
-}
-
-/* Error modal */
-.search-box{
-  width: 100%;
-  padding: 8px;
-  font-size: var(--text-size);
-  margin-bottom: 10px;
-}
-.error-table{
-  width: 100%;
-  border-collapse: collapse;
-}
-.error-table td{
-  border: var(--border-soft);
-  padding: 8px;
-}
-.error-row{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.small{ font-size: var(--text-size); color:#333; }
 </style>
 </head>
 
 <body>
 
-<!-- （HTML構造は前回と完全に同一のため省略せずそのまま使用） -->
+<!-- ■問い合わせ内容 -->
+<div class="section">
+  <div class="label">■ 問い合わせ内容</div>
+  <div class="buttons">
+    <button>認証コード未着</button>
+    <button>エラーメッセージ</button>
+    <button>移行対象判定</button>
+  </div>
+</div>
 
-<script src="app.js"></script>
+<!-- ■ヒアリング結果 -->
+<div class="section">
+  <div class="label">■ ヒアリング結果</div>
+  <textarea id="resultText" readonly></textarea>
+</div>
+
 </body>
 </html>
