@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>スクリプト管理</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+    :root {
+      --bg:#f5f6fa; --white:#ffffff; --border:#e4e6ed;
+      --text:#1e2130; --muted:#8b90a0;
+      --accent:#4361ee; --accent-lt:#eef1fd;
+      --green:#2ec4b6; --red:#e63946;
+      --sidebar-w:280px; --header-h:58px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);font-size:13px;height:100vh;overflow:hidden}
+
+    /* HEADER */
+    header{position:fixed;top:0;left:0;right:0;height:var(--header-h);background:var(--text);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:200}
+    .hd-left{display:flex;align-items:center;gap:14px}
+    .hd-logo{font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:7px}
+    .hd-badge{background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+    .hd-right{display:flex;align-items:center;gap:8px}
+    .btn{height:34px;padding:0 16px;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:filter .15s,transform .1s}
+    .btn:hover{filter:brightness(1.08)}.btn:active{transform:scale(.97)}
+    .btn-primary{background:var(--green);color:#fff}
+    .btn-secondary{background:#3a3f52;color:#fff}
+    .btn-ghost{background:transparent;color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.2)}
+    .btn-accent{background:var(--accent);color:#fff}
+    .btn-icon{width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;border-radius:5px;font-size:14px;color:var(--muted);transition:background .15s,color .15s}
+    .btn-icon:hover{background:#fff0f0;color:var(--red)}
+
+    /* LAYOUT */
+    .layout{display:flex;height:calc(100vh - var(--header-h));margin-top:var(--header-h)}
+
+    /* SIDEBAR */
+    .sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+    .sidebar-top{padding:12px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .sidebar-top-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+    .sidebar-scroll{flex:1;overflow-y:auto;padding-bottom:8px}
+    .cat-block{border-bottom:1px solid var(--border)}
+    .cat-header{display:flex;align-items:center;padding:0 8px 0 10px;height:40px;background:#fafbfc;gap:6px}
+    .cat-color{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    .cat-name-input{flex:1;border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:var(--text);padding:4px 4px;border-radius:4px;cursor:pointer}
+    .cat-name-input:focus{outline:none;background:var(--accent-lt);cursor:text}
+    .cat-actions{display:flex;gap:2px;align-items:center}
+    .cat-del-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:3px 5px;border-radius:4px;transition:color .15s,background .15s}
+    .cat-del-btn:hover{color:var(--red);background:#fff0f0}
+    .cat-add-btn{background:none;border:none;cursor:pointer;color:var(--accent);font-size:18px;padding:0 4px;line-height:1;border-radius:4px;transition:background .15s}
+    .cat-add-btn:hover{background:var(--accent-lt)}
+    .script-list-ul{list-style:none}
+    .script-item{display:flex;align-items:center;padding:0 8px 0 26px;height:36px;cursor:pointer;border-left:3px solid transparent;transition:background .12s,border-color .12s;gap:7px}
+    .script-item:hover{background:#f7f8fc}
+    .script-item.active{background:var(--accent-lt);border-left-color:var(--accent)}
+    .script-item-dot{width:5px;height:5px;border-radius:50%;background:var(--border);flex-shrink:0;transition:background .12s}
+    .script-item.active .script-item-dot{background:var(--accent)}
+    .script-item-name{flex:1;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .script-item.active .script-item-name{color:var(--accent);font-weight:700}
+    .script-del{opacity:0;background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:2px 4px;border-radius:3px;transition:opacity .15s,color .15s}
+    .script-item:hover .script-del{opacity:1}
+    .script-del:hover{color:var(--red)}
+    .add-cat-btn{margin:10px 14px;display:flex;align-items:center;gap:6px;background:none;border:1px dashed var(--border);border-radius:7px;padding:8px 12px;width:calc(100% - 28px);font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+    .add-cat-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+    /* EDITOR */
+    .editor-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+    .editor-scroll{flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:14px}
+    .empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted)}
+    .empty-icon{font-size:44px;opacity:.35}
+    .title-row{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:10px}
+    .title-row label{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+    .title-row input{flex:1;border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;font-weight:700;font-family:inherit;color:var(--text);transition:border-color .15s}
+    .title-row input:focus{outline:none;border-color:var(--accent)}
+
+    /* STEP CARD */
+    .step-card{background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:box-shadow .2s}
+    .step-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.07)}
+    .step-card.step-start{border-top:3px solid var(--accent)}
+    .step-card.step-end{border-top:3px solid var(--green)}
+    .step-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#fafbfc;border-bottom:1px solid var(--border)}
+    .step-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+    .step-badge-num{background:var(--accent-lt);color:var(--accent)}
+    .step-badge-start{background:#e8f4fd;color:#2980b9}
+    .step-badge-end{background:#e8fdf5;color:#27ae60}
+    .step-head-spacer{flex:1}
+    .step-del-btn{background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--muted);font-size:11px;padding:4px 10px;font-family:inherit;transition:color .15s,border-color .15s,background .15s}
+    .step-del-btn:hover{color:var(--red);border-color:var(--red);background:#fff0f0}
+    .step-body{padding:14px;display:flex;flex-direction:column;gap:12px}
+    .field-label{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px}
+    textarea.step-text{width:100%;min-height:76px;resize:vertical;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:13px;line-height:1.65;font-family:inherit;color:var(--text);transition:border-color .15s}
+    textarea.step-text:focus{outline:none;border-color:var(--accent)}
+
+    /* CHOICES */
+    .choices-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+    .choice-row{display:flex;align-items:center;gap:7px;background:#fafbfc;border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:6px}
+    .choice-num{font-size:10px;font-weight:700;color:var(--muted);min-width:16px}
+    .choice-label-in{flex:1;border:1px solid var(--border);border-radius:5px;padding:6px 10px;font-size:12px;font-family:inherit;background:var(--white);transition:border-color .15s}
+    .choice-label-in:focus{outline:none;border-color:var(--accent)}
+    .choice-arrow{color:var(--muted);font-size:12px;flex-shrink:0}
+    .choice-go-sel{width:130px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;font-family:inherit;background:var(--white);transition:border-color .15s}
+    .choice-go-sel:focus{outline:none;border-color:var(--accent)}
+    .end-tag{display:inline-flex;align-items:center;gap:5px;background:#e8fdf5;color:#27ae60;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px}
+    .add-choice-btn{background:none;border:1px dashed var(--border);border-radius:6px;padding:7px 12px;width:100%;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;text-align:left;transition:border-color .15s,color .15s}
+    .add-choice-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .add-step-btn{border:2px dashed var(--border);border-radius:10px;background:none;padding:14px;width:100%;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+    .add-step-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+    /* PREVIEW */
+    .preview-wrap{width:250px;min-width:250px;background:var(--white);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+    .preview-top{padding:12px 16px 10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+    .preview-scroll{flex:1;overflow-y:auto;padding:12px}
+    .pv-node{border:1px solid var(--border);border-radius:7px;padding:9px 11px;margin-bottom:7px}
+    .pv-node-start{border-top:2px solid var(--accent)}
+    .pv-node-end{border-top:2px solid var(--green)}
+    .pv-num{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px}
+    .pv-text{font-size:11px;color:var(--text);line-height:1.5}
+    .pv-choices{margin-top:7px;display:flex;flex-direction:column;gap:3px}
+    .pv-choice{background:var(--accent-lt);border-radius:4px;padding:3px 8px;font-size:10px;color:var(--accent)}
+    .pv-end{background:#e8fdf5;border-radius:4px;padding:3px 8px;font-size:10px;color:#27ae60;font-weight:700;display:inline-block;margin-top:5px}
+
+    /* MODAL */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:999;opacity:0;pointer-events:none;transition:opacity .2s}
+    .modal-overlay.open{opacity:1;pointer-events:all}
+    .modal{background:var(--white);border-radius:12px;padding:28px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,.2);transform:scale(.95);transition:transform .2s}
+    .modal-overlay.open .modal{transform:scale(1)}
+    .modal h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .modal p{font-size:12px;color:var(--muted);margin-bottom:16px}
+    .modal input{width:100%;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:14px;font-family:inherit;margin-bottom:16px}
+    .modal input:focus{outline:none;border-color:var(--accent)}
+    .modal-actions{display:flex;justify-content:flex-end;gap:8px}
+    .modal-cancel{background:var(--bg);border:none;border-radius:7px;padding:0 16px;height:36px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;color:var(--muted)}
+
+    /* TOAST */
+    #toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:white;padding:11px 18px;border-radius:8px;font-size:12px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.2);opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s;pointer-events:none;z-index:9999}
+    #toast.show{opacity:1;transform:translateY(0)}
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:#d0d3de;border-radius:10px}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="hd-left">
+    <div class="hd-logo"><span>🛠</span> スクリプト管理</div>
+    <div class="hd-badge">ADMIN</div>
+  </div>
+  <div class="hd-right">
+    <button class="btn btn-ghost" onclick="location.href='index.html'">← 本番画面へ</button>
+    <button class="btn btn-secondary" onclick="exportJSON()">📥 エクスポート</button>
+    <button class="btn btn-secondary" onclick="triggerImport()">📤 インポート</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+    <button class="btn btn-primary" onclick="saveAll()">💾 保存して反映</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-top">
+      <span class="sidebar-top-label">カテゴリ / スクリプト</span>
+    </div>
+    <div class="sidebar-scroll" id="sidebarScroll"></div>
+    <button class="add-cat-btn" onclick="openAddCat()">＋ カテゴリを追加</button>
+  </div>
+
+  <div class="editor-wrap">
+    <div class="editor-scroll" id="editorScroll">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div>左のリストからスクリプトを選んでください</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="preview-wrap">
+    <div class="preview-top">フロープレビュー</div>
+    <div class="preview-scroll" id="previewScroll">
+      <div style="color:var(--muted);font-size:11px;text-align:center;padding-top:20px">スクリプトを選ぶと<br>フローが表示されます</div>
+    </div>
+  </div>
+</div>
+
+<!-- カテゴリ追加モーダル -->
+<div class="modal-overlay" id="modalCat" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3>カテゴリを追加</h3>
+    <p>本番画面の用途ボタンに追加されます</p>
+    <input type="text" id="newCatName" placeholder="カテゴリ名（例：個人・官公庁）" maxlength="20">
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-accent" onclick="addCategory()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const CAT_COLORS=['#4361ee','#2ec4b6','#e63946','#f4a261','#a8dadc','#9b5de5','#f15bb5'];
+
+function loadData(){
+  try{const s=localStorage.getItem('talkScripts');if(s)return JSON.parse(s);}catch(e){}
+  return null;
+}
+
+let data=loadData();
+if(!data){
+  data={};
+  const s=document.createElement('script');s.src='app.js';
+  s.onload=()=>{
+    if(typeof _defaultScripts!=='undefined'){
+      data=JSON.parse(JSON.stringify(_defaultScripts));
+      ensureColors();render();toast('✅ 既存データを読み込みました');
+    }
+  };
+  document.head.appendChild(s);
+}
+
+function ensureColors(){
+  let ci=0;
+  Object.values(data).forEach(cat=>{if(!cat.color)cat.color=CAT_COLORS[ci%CAT_COLORS.length];ci++;});
+}
+ensureColors();
+
+let currentCat=null,currentIdx=null;
+
+/* ======= RENDER ======= */
+function render(){renderSidebar();if(currentCat&&currentIdx!==null){if(!data[currentCat]||!data[currentCat].list[currentIdx]){currentCat=null;currentIdx=null;showEmpty();}else{renderEditor();renderPreview();}}}
+
+function showEmpty(){
+  document.getElementById('editorScroll').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div>左のリストからスクリプトを選んでください</div></div>';
+  document.getElementById('previewScroll').innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding-top:20px">スクリプトを選ぶと<br>フローが表示されます</div>';
+}
+
+function renderSidebar(){
+  let h='';
+  Object.entries(data).forEach(([key,cat])=>{
+    h+=`<div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-color" style="background:${cat.color||'#ccc'}"></div>
+        <input class="cat-name-input" value="${esc(cat.name)}" oninput="renameCat('${key}',this.value)" title="クリックして編集">
+        <div class="cat-actions">
+          <button class="cat-add-btn" onclick="addScript('${key}')" title="スクリプトを追加">＋</button>
+          <button class="cat-del-btn" onclick="deleteCat('${key}')" title="削除">🗑</button>
+        </div>
+      </div>
+      <ul class="script-list-ul">`;
+    (cat.list||[]).forEach((item,i)=>{
+      const active=currentCat===key&&currentIdx===i;
+      h+=`<li class="script-item${active?' active':''}" onclick="selectScript('${key}',${i})">
+        <div class="script-item-dot"></div>
+        <span class="script-item-name">${esc(item.title||'（タイトルなし）')}</span>
+        <button class="script-del" onclick="event.stopPropagation();deleteScript('${key}',${i})">✕</button>
+      </li>`;
+    });
+    h+=`</ul></div>`;
+  });
+  document.getElementById('sidebarScroll').innerHTML=h;
+}
+
+function renderEditor(){
+  const item=data[currentCat].list[currentIdx];
+  const steps=item.steps||[];
+  let sh='';
+  steps.forEach((step,si)=>{
+    const isStart=si===0;
+    const isEnd=!step.choices||step.choices.length===0;
+    const cardCls=isStart?'step-start':(isEnd?'step-end':'');
+    const badge=isStart
+      ?`<span class="step-badge step-badge-start">▶ 開始（ステップ0）</span>`
+      :`<span class="step-badge step-badge-num">ステップ ${si}</span>`;
+    const endBadge=isEnd&&!isStart?`<span class="step-badge step-badge-end" style="font-size:10px">✓ ここで終了</span>`:'';
+
+    let cho='';
+    if(!isEnd){
+      cho=`<div class="choices-header"><div class="field-label" style="margin:0">選択肢（回答ボタン）</div></div>`;
+      (step.choices||[]).forEach((c,ci)=>{
+        let opts='';
+        for(let i=0;i<steps.length;i++) opts+=`<option value="${i}"${c.go===i?' selected':''}>${i===0?'ステップ0（開始）':'ステップ '+i}</option>`;
+        cho+=`<div class="choice-row">
+          <span class="choice-num">${ci+1}</span>
+          <input class="choice-label-in" type="text" value="${esc(c.label||'')}" placeholder="ボタンの文字（例：はい）" oninput="updCL(${si},${ci},this.value)">
+          <span class="choice-arrow">→</span>
+          <select class="choice-go-sel" onchange="updCG(${si},${ci},+this.value)">${opts}</select>
+          <button class="btn-icon" onclick="delChoice(${si},${ci})">✕</button>
+        </div>`;
+      });
+      cho+=`<button class="add-choice-btn" onclick="addChoice(${si})">＋ 選択肢を追加</button>`;
+    } else {
+      cho=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="end-tag">✓ ここで終了</span>
+        <button class="add-choice-btn" style="width:auto;padding:5px 14px" onclick="addChoice(${si})">選択肢を追加して分岐させる</button>
+      </div>`;
+    }
+
+    sh+=`<div class="step-card ${cardCls}">
+      <div class="step-head">
+        ${badge}${endBadge}
+        <span class="step-head-spacer"></span>
+        ${si>0?`<button class="step-del-btn" onclick="delStep(${si})">🗑 このステップを削除</button>`:''}
+      </div>
+      <div class="step-body">
+        <div class="field-label">トーク内容</div>
+        <textarea class="step-text" placeholder="オペレーターが話す内容を入力…" oninput="updST(${si},this.value)">${esc(step.text||'')}</textarea>
+        ${cho}
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('editorScroll').innerHTML=`
+    <div class="title-row">
+      <label>スクリプト名</label>
+      <input type="text" value="${esc(item.title||'')}" oninput="updTitle(this.value)" placeholder="スクリプト名を入力">
+    </div>
+    <div id="stepsWrap">${sh}</div>
+    <button class="add-step-btn" onclick="addStep()">＋ ステップを追加</button>`;
+}
+
+function renderPreview(){
+  if(!currentCat||currentIdx===null)return;
+  const steps=(data[currentCat].list[currentIdx].steps||[]);
+  let h='';
+  steps.forEach((step,si)=>{
+    const isEnd=!step.choices||step.choices.length===0;
+    const snip=(step.text||'').slice(0,55)+((step.text||'').length>55?'…':'');
+    let cho='';
+    if(!isEnd){step.choices.forEach(c=>{cho+=`<div class="pv-choice">${esc(c.label||'（未入力）')} → ステップ${c.go}</div>`;});cho=`<div class="pv-choices">${cho}</div>`;}
+    else cho='<div class="pv-end">✓ 終了</div>';
+    h+=`<div class="pv-node ${si===0?'pv-node-start':''} ${isEnd?'pv-node-end':''}">
+      <div class="pv-num">ステップ${si}${si===0?' ▶ 開始':''}</div>
+      <div class="pv-text">${esc(snip)||'<span style="color:var(--muted)">（未入力）</span>'}</div>
+      ${cho}
+    </div>`;
+  });
+  document.getElementById('previewScroll').innerHTML=h||'<div style="color:var(--muted);font-size:11px">ステップがありません</div>';
+}
+
+/* ======= ACTIONS ======= */
+function selectScript(k,i){currentCat=k;currentIdx=i;renderSidebar();renderEditor();renderPreview();}
+
+function addScript(catKey){
+  if(!data[catKey].list)data[catKey].list=[];
+  data[catKey].list.push({title:'新しいスクリプト',steps:[{text:'',choices:[]}]});
+  selectScript(catKey,data[catKey].list.length-1);
+  setTimeout(()=>{const inp=document.querySelector('.title-row input');if(inp){inp.focus();inp.select();}},60);
+}
+
+function deleteScript(catKey,idx){
+  const name=data[catKey].list[idx].title;
+  if(!confirm(`「${name}」を削除しますか？`))return;
+  data[catKey].list.splice(idx,1);
+  if(currentCat===catKey){if(currentIdx===idx){currentCat=null;currentIdx=null;showEmpty();}else if(currentIdx>idx)currentIdx--;}
+  renderSidebar();
+}
+
+function renameCat(key,val){data[key].name=val;}
+
+function deleteCat(key){
+  const name=data[key].name;
+  const count=(data[key].list||[]).length;
+  const msg=count>0?`「${name}」にはスクリプトが${count}件あります。\nカテゴリごと削除しますか？`:`「${name}」を削除しますか？`;
+  if(!confirm(msg))return;
+  delete data[key];
+  if(currentCat===key){currentCat=null;currentIdx=null;showEmpty();}
+  render();toast(`🗑 「${name}」を削除しました`);
+}
+
+function openAddCat(){document.getElementById('newCatName').value='';document.getElementById('modalCat').classList.add('open');setTimeout(()=>document.getElementById('newCatName').focus(),100);}
+function closeModal(){document.getElementById('modalCat').classList.remove('open');}
+document.getElementById('newCatName').addEventListener('keydown',e=>{if(e.key==='Enter')addCategory();if(e.key==='Escape')closeModal();});
+
+function addCategory(){
+  const name=document.getElementById('newCatName').value.trim();
+  if(!name){toast('⚠️ カテゴリ名を入力してください');return;}
+  const key='cat_'+Date.now();
+  const ci=Object.keys(data).length%CAT_COLORS.length;
+  data[key]={name,color:CAT_COLORS[ci],list:[]};
+  closeModal();render();toast(`✅ 「${name}」を追加しました`);
+}
+
+function updTitle(v){data[currentCat].list[currentIdx].title=v;renderSidebar();renderPreview();}
+function updST(si,v){data[currentCat].list[currentIdx].steps[si].text=v;renderPreview();}
+function addStep(){
+  data[currentCat].list[currentIdx].steps.push({text:'',choices:[]});
+  renderEditor();renderPreview();
+  setTimeout(()=>{const c=document.querySelectorAll('.step-card');if(c.length)c[c.length-1].scrollIntoView({behavior:'smooth',block:'start'});},60);
+}
+function delStep(si){
+  if(!confirm(`ステップ${si}を削除しますか？\n※このステップへのリンクも確認してください`))return;
+  const steps=data[currentCat].list[currentIdx].steps;
+  steps.splice(si,1);
+  steps.forEach(s=>{if(s.choices)s.choices.forEach(c=>{if(c.go>=si)c.go=Math.max(0,c.go-1);});});
+  renderEditor();renderPreview();
+}
+function addChoice(si){
+  const steps=data[currentCat].list[currentIdx].steps;
+  if(!steps[si].choices)steps[si].choices=[];
+  steps[si].choices.push({label:'',go:Math.min(si+1,steps.length-1)});
+  renderEditor();renderPreview();
+}
+function delChoice(si,ci){data[currentCat].list[currentIdx].steps[si].choices.splice(ci,1);renderEditor();renderPreview();}
+function updCL(si,ci,v){data[currentCat].list[currentIdx].steps[si].choices[ci].label=v;renderPreview();}
+function updCG(si,ci,v){data[currentCat].list[currentIdx].steps[si].choices[ci].go=v;renderPreview();}
+
+function triggerImport(){document.getElementById('importFile').click();}
+
+function importJSON(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const imported=JSON.parse(e.target.result);
+      // 基本的な構造チェック
+      const keys=Object.keys(imported);
+      const valid=keys.length>0&&keys.every(k=>imported[k].name&&Array.isArray(imported[k].list));
+      if(!valid){toast('❌ ファイルの形式が正しくありません');return;}
+      if(!confirm('現在のデータをインポートしたデータで上書きします。よろしいですか？'))return;
+      data=imported;
+      ensureColors();
+      currentCat=null;currentIdx=null;
+      render();showEmpty();
+      toast('✅ インポートしました（保存するには「保存して反映」を押してください）');
+    }catch(err){
+      toast('❌ 読み込みに失敗しました: '+err.message);
+    }
+    input.value=''; // 同じファイルを再インポートできるようリセット
+  };
+  reader.readAsText(file);
+}
+
+function saveAll(){
+  try{localStorage.setItem('talkScripts',JSON.stringify(data));toast('✅ 保存しました。本番画面に反映されます。');}
+  catch(e){toast('❌ 保存失敗: '+e.message);}
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='scripts_backup.json';a.click();
+  toast('📥 エクスポートしました');
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let toastT;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3000);}
+
+render();
+</script>
+</body>
+</html>
