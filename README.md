@@ -1,1 +1,1 @@
-[# memo](https://github.com/ORESENYO/memo.git)
+https://oresenyo.github.io/memo/index.html
