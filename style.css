@@ -629,3 +629,168 @@ th {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* =====================================================
+   RESPONSIVE - スマホ対応（768px以下）
+   ===================================================== */
+@media (max-width: 768px) {
+
+  /* ヘッダー：2行レイアウト */
+  header {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .left-header {
+    flex: none;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .header-title {
+    font-size: 14px;
+    flex: 1;
+  }
+
+  .nav-buttons {
+    gap: 5px;
+  }
+
+  .nav-buttons button {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  /* 検索と定型文を2行目に全幅で */
+  .search-area,
+  .quick-copy-area {
+    flex: none;
+  }
+
+  .search-area {
+    flex: 1;
+    margin-left: 0;
+  }
+
+  #searchBox {
+    width: 100%;
+  }
+
+  .quick-copy-area {
+    margin-left: 8px;
+  }
+
+  /* ヘッダー分のmainのオフセット調整 */
+  main {
+    margin-top: 110px;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  /* サイドメニュー：ヘッダー高さに合わせる */
+  #sideMenu {
+    top: 110px;
+    height: calc(100% - 110px);
+  }
+
+  /* スクリプトパネル：縦積みに */
+  .script-panel {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .script-list {
+    width: 100%;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid #dfe4ea;
+    /* リストは折りたたみ可能に */
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  /* 選択済みアイテムがあるとき、リストを縮める */
+  .script-panel.has-selection .script-list {
+    max-height: 52px;
+    overflow: hidden;
+  }
+
+  .script-panel.has-selection .script-list-item.active {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .script-detail {
+    padding: 12px;
+  }
+
+  /* コンテンツエリア */
+  #contentArea {
+    padding: 12px;
+  }
+
+  #contentArea h2 {
+    font-size: 14px;
+  }
+
+  /* ステップUI */
+  .step-bubble {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  .step-choice-btn {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  /* opening/closing */
+  .opening-text {
+    font-size: 13px;
+  }
+
+  .closing-buttons {
+    flex-wrap: wrap;
+  }
+
+  /* クイックメニュー：スマホでも右端揃え */
+  .quick-menu {
+    right: 0;
+    left: auto;
+    min-width: 160px;
+  }
+
+  .quick-copy-toast {
+    right: 0;
+    top: 40px;
+  }
+
+  /* 検索サジェスト：全幅 */
+  #suggestBox {
+    width: 100%;
+    left: 0;
+    right: 0;
+  }
+
+  /* テーブル：横スクロール */
+  #historyBody {
+    overflow-x: auto;
+  }
+}
+
+/* さらに小さい画面（380px以下） */
+@media (max-width: 380px) {
+  .nav-buttons button {
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .quick-copy-btn {
+    padding: 0 10px;
+    font-size: 11px;
+  }
+}

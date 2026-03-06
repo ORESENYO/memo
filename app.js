@@ -68,9 +68,10 @@ function renderScriptList(type, openIndex) {
     detailHtml = `<div class="script-detail-empty">左のリストから項目を選択してください</div>`;
   }
 
+  const panelClass = openIndex !== null ? 'script-panel has-selection' : 'script-panel';
   contentArea.innerHTML = `
     <h2>${data.name}</h2>
-    <div class="script-panel">
+    <div class="${panelClass}">
       <ul class="script-list">${listHtml}</ul>
       <div class="script-detail" id="scriptDetail">${detailHtml}</div>
     </div>
