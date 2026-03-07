@@ -172,29 +172,6 @@ function closingAsk() {
   closingText.innerHTML = "追加質問に回答いたします。回答後、再度不明点確認を行います。";
 }
 
-// ===== サイドメニュー =====
-const menuBtn = document.getElementById("menuBtn");
-const sideMenu = document.getElementById("sideMenu");
-
-menuBtn.onclick = () => {
-  sideMenu.style.left = sideMenu.style.left === "0px" ? "-260px" : "0px";
-};
-
-document.addEventListener("click", (e) => {
-  if (!sideMenu.contains(e.target) && e.target !== menuBtn) {
-    sideMenu.style.left = "-260px";
-  }
-});
-
-// ===== アコーディオン =====
-function toggleAccordion(id) {
-  const body = document.getElementById(id);
-  const header = body.previousElementSibling;
-  const isOpen = body.classList.contains("open");
-  body.classList.toggle("open", !isOpen);
-  header.classList.toggle("open", !isOpen);
-}
-
 // ===== 検索（タイトル＋本文） =====
 const searchBox = document.getElementById("searchBox");
 const suggestBox = document.getElementById("suggestBox");

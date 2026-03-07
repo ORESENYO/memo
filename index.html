@@ -5,73 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>トークスクリプト集</title>
   <link rel="stylesheet" href="style.css">
+  <script src="sidemenu.js"></script>
 </head>
 <body>
 
 <header>
-  <div class="left-header">
-    <button id="menuBtn">☰</button>
+  <div class="hd-left">
+    <button id="menuBtn" onclick="toggleSideMenu()">☰</button>
+    <button class="nav-btn" onclick="goHome()">🏠 ホーム</button>
+    <button class="nav-btn" onclick="location.href='mail.html'">✉️ メール</button>
+  </div>
+  <div class="hd-center">
     <div class="header-title">トークスクリプト集</div>
-    <div class="nav-buttons">
-      <button onclick="goHome()">ホーム</button>
-      <button onclick="triggerImport()" style="background:#57606f;color:white;" title="JSONファイルを読み込んでデータを更新">📤 データ更新</button>
-      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
-      <!-- ▼▼▼ 管理画面ボタン（不要な場合はこの行を削除） ▼▼▼ -->
-      <button onclick="location.href='admin.html'" style="background:#2ed573;color:#1a1a2e;font-weight:700;">🛠 管理</button>
-      <!-- ▲▲▲ 管理画面ボタン ここまで ▲▲▲ -->
-    </div>
   </div>
-  <div class="search-area">
-    <input type="text" id="searchBox" placeholder="スクリプト検索（タイトル・本文）" autocomplete="off">
-    <button id="clearBtn">×</button>
-    <div id="suggestBox"></div>
-  </div>
-  <div class="quick-copy-area">
-    <button class="quick-copy-btn" id="quickCopyBtn" onclick="toggleQuickMenu()">💬 定型文</button>
-    <div class="quick-menu" id="quickMenu">
-      <div class="quick-menu-item" onclick="copyText('✊HELP✊', 'HELP')">✊ HELP</div>
-      <div class="quick-menu-item" onclick="copyText('✌保留中✌', '話中')">✌ 話中</div>
-      <div class="quick-menu-item" onclick="copyText('✋後処理✋', '後処理')">✋ 後処理</div>
-      <div class="quick-menu-item" onclick="copyText('検証機お願いします（iPhone）', 'iPhone')">📱 iPhone</div>
-      <div class="quick-menu-item" onclick="copyText('検証機お願いします（Android）', 'Android')">🤖 Android</div>
-      <div class="quick-menu-item" onclick="copyText('休憩よろしいですか', '10休')">☕ 10休</div>
+  <div class="hd-right">
+    <button class="nav-btn nav-btn-admin" onclick="location.href='admin.html'">🛠 管理</button>
+    <button class="nav-btn" onclick="triggerImport()" title="JSONファイルを読み込んでデータを更新">📤 データ更新</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+    <div class="quick-copy-area">
+      <button class="quick-copy-btn nav-btn-green" id="quickCopyBtn" onclick="toggleQuickMenu()">💬 定型文</button>
+      <div class="quick-menu" id="quickMenu">
+        <div class="quick-menu-item" onclick="copyText('✊HELP✊', 'HELP')">✊ HELP</div>
+        <div class="quick-menu-item" onclick="copyText('✌保留中✌', '話中')">✌ 話中</div>
+        <div class="quick-menu-item" onclick="copyText('✋後処理✋', '後処理')">✋ 後処理</div>
+        <div class="quick-menu-item" onclick="copyText('検証機お願いします（iPhone）', 'iPhone')">📱 iPhone</div>
+        <div class="quick-menu-item" onclick="copyText('検証機お願いします（Android）', 'Android')">🤖 Android</div>
+        <div class="quick-menu-item" onclick="copyText('休憩よろしいですか', '10休')">☕ 10休</div>
+      </div>
+      <div class="quick-copy-toast" id="quickCopyToast"></div>
     </div>
-    <div class="quick-copy-toast" id="quickCopyToast"></div>
+    <div class="search-area">
+      <input type="text" id="searchBox" placeholder="スクリプト検索（タイトル・本文）" autocomplete="off">
+      <button id="clearBtn">×</button>
+      <div id="suggestBox"></div>
+    </div>
   </div>
 </header>
 
-<aside id="sideMenu">
-  <div class="side-section">
-    <div class="side-section-header" onclick="toggleAccordion('linkTools')">
-      🔧 ツール <span class="arrow">▶</span>
-    </div>
-    <ul class="accordion-body" id="linkTools">
-      <li><a href="#" target="_blank">社内ポータル</a></li>
-      <li><a href="#" target="_blank">CRMシステム</a></li>
-      <li><a href="#" target="_blank">チケット管理</a></li>
-    </ul>
-  </div>
-  <div class="side-section">
-    <div class="side-section-header" onclick="toggleAccordion('linkDocs')">
-      📄 資料 <span class="arrow">▶</span>
-    </div>
-    <ul class="accordion-body" id="linkDocs">
-      <li><a href="#" target="_blank">FAQ集</a></li>
-      <li><a href="#" target="_blank">業務マニュアル</a></li>
-      <li><a href="#" target="_blank">料金表</a></li>
-    </ul>
-  </div>
-  <div class="side-section">
-    <div class="side-section-header" onclick="toggleAccordion('linkSites')">
-      🌐 関連サイト <span class="arrow">▶</span>
-    </div>
-    <ul class="accordion-body" id="linkSites">
-      <li><a href="#" target="_blank">公式サイト</a></li>
-      <li><a href="#" target="_blank">申込フォーム</a></li>
-      <li><a href="#" target="_blank">お知らせページ</a></li>
-    </ul>
-  </div>
-</aside>
+<aside id="sideMenu"></aside>
 
 <main>
   <div class="opening">
@@ -92,35 +63,6 @@
     </div>
   </div>
 
-  <div class="history">
-    <div class="history-header" onclick="toggleHistory()">更新履歴 ▼</div>
-    <div id="historyBody">
-      <table>
-        <thead>
-          <tr>
-            <th>更新内容</th>
-            <th>更新者</th>
-            <th>承認者</th>
-            <th>更新日</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>初版作成</td>
-            <td>山田</td>
-            <td>佐藤</td>
-            <td>2026/03/07</td>
-          </tr>
-          <tr>
-            <td>クロージングトーク追加</td>
-            <td>鈴木</td>
-            <td>佐藤</td>
-            <td>2026/03/08</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
 </main>
 
 <script src="app.js"></script>

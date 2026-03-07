@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>メールテンプレート集</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f1f2f6;
+      font-size: 13px;
+      color: #2f3542;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      height: 60px; background: #2f3542; color: white;
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      align-items: center; padding: 0 15px;
+      position: fixed; width: 100%; top: 0; z-index: 1000; gap: 12px;
+    }
+    .hd-left { display: flex; align-items: center; gap: 10px; justify-content: flex-start; }
+    .hd-center { display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+    .hd-title { font-size: 16px; font-weight: 700; white-space: nowrap; }
+    .hd-right { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+    .hd-btn {
+      height: 36px; padding: 0 14px; border: none; border-radius: 6px;
+      cursor: pointer; font-size: 12px; font-weight: 700; font-family: inherit;
+      white-space: nowrap; background: #57606f; color: white;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .hd-btn:hover { background: #747d8c; }
+    .hd-btn-admin { background: #3742fa; color: white; }
+    .hd-btn-admin:hover { background: #2536e8; }
+    .hd-btn-green { background: #2ed573; color: #1a1a2e; }
+    .hd-btn-green:hover { background: #26c065; }
+
+    /* ☰ メニューボタン */
+    #menuBtn {
+      height: 36px; width: 36px; padding: 0; font-size: 18px;
+      background: none; border: none; color: white; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 6px; flex-shrink: 0; transition: background 0.2s;
+    }
+    #menuBtn:hover { background: rgba(255,255,255,0.1); }
+
+    /* 定型文ボタン（緑） */
+    .quick-copy-btn {
+      height: 36px; padding: 0 14px; border: none; border-radius: 6px;
+      background: #2ed573; color: #1a1a2e; font-size: 12px; font-weight: 700;
+      font-family: inherit; display: inline-flex; align-items: center;
+      justify-content: center; white-space: nowrap; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .quick-copy-btn:hover { background: #26c065; }
+
+    /* 検索 */
+    .search-wrap { position: relative; }
+    #searchBox {
+      height: 36px; width: 300px; padding: 0 35px 0 10px;
+      border-radius: 6px; border: none; font-size: 12px;
+    }
+    #clearBtn {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      width: 18px; height: 18px; border-radius: 50%; border: none;
+      background: #aaa; color: white; display: none; cursor: pointer;
+      font-size: 11px; line-height: 18px; text-align: center;
+    }
+
+    /* 定型文クイックコピー */
+    .quick-copy-area { position: relative; }
+    .quick-menu {
+      display: none; position: absolute; top: 44px; right: 0;
+      background: white; border: 1px solid #dfe4ea; border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15); z-index: 1100;
+      min-width: 180px; overflow: hidden;
+    }
+    .quick-menu.open { display: block; animation: menuFadeIn 0.15s ease; }
+    @keyframes menuFadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .quick-menu-item {
+      padding: 13px 16px; font-size: 13px; color: #2f3542;
+      cursor: pointer; border-bottom: 1px solid #f1f2f6;
+      transition: background 0.12s; display: flex; align-items: center; gap: 6px;
+    }
+    .quick-menu-item:last-child { border-bottom: none; }
+    .quick-menu-item:hover { background: #f0f4ff; color: #3742fa; }
+    .quick-copy-toast {
+      position: absolute; top: 44px; right: 0;
+      background: #2f3542; color: white; font-size: 11px; font-weight: 600;
+      padding: 6px 12px; border-radius: 6px; white-space: nowrap;
+      pointer-events: none; opacity: 0; transform: translateY(-4px);
+      transition: opacity 0.2s, transform 0.2s; z-index: 1200;
+    }
+    .quick-copy-toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ===== LAYOUT ===== */
+    .layout {
+      margin-top: 60px;
+      display: flex;
+      height: calc(100vh - 60px);
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: 220px; min-width: 220px;
+      background: white;
+      border-right: 1px solid #dfe4ea;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-top {
+      padding: 10px 14px 8px;
+      font-size: 11px; font-weight: 700; color: #888;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #dfe4ea;
+      flex-shrink: 0;
+    }
+    .sidebar-scroll { flex: 1; overflow-y: auto; }
+
+    .sb-all-btn {
+      width: 100%; text-align: left;
+      padding: 10px 14px; background: none; border: none;
+      border-bottom: 1px solid #f1f2f6;
+      cursor: pointer; font-size: 12px; font-weight: 700; color: #555;
+      font-family: sans-serif; transition: background 0.12s;
+    }
+    .sb-all-btn:hover { background: #f7f8fc; }
+    .sb-all-btn.active { background: #eef0ff; color: #3742fa; }
+
+    .sb-cat { border-bottom: 1px solid #f1f2f6; }
+    .sb-cat-label {
+      padding: 8px 14px 4px;
+      font-size: 10px; font-weight: 700; color: #aaa;
+      display: flex; align-items: center; gap: 5px;
+      letter-spacing: 0.05em;
+    }
+    .sb-cat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .sb-item {
+      display: flex; align-items: center;
+      padding: 8px 14px 8px 24px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .sb-item:hover { background: #f7f8fc; }
+    .sb-item.active { background: #eef0ff; border-left-color: #3742fa; }
+    .sb-item-title {
+      font-size: 12px; font-weight: 600; color: #2f3542;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sb-item.active .sb-item-title { color: #3742fa; }
+
+    /* ===== MAIN ===== */
+    .main-area {
+      flex: 1; overflow-y: auto; padding: 20px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: #aaa; gap: 10px; padding: 60px 0;
+    }
+    .empty-icon { font-size: 44px; opacity: 0.3; }
+    .empty-text { font-size: 13px; }
+
+    /* カードグリッド（一覧） */
+    .card-grid { display: flex; flex-direction: column; gap: 10px; }
+    .mail-card {
+      background: white; border: 1px solid #dfe4ea;
+      border-radius: 8px; padding: 14px 16px;
+      cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .mail-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.09); border-color: #c5cad6; }
+    .mc-cat { font-size: 10px; font-weight: 700; color: #888; margin-bottom: 4px; }
+    .mc-title { font-size: 14px; font-weight: 700; color: #2f3542; margin-bottom: 6px; }
+    .mc-subject { font-size: 12px; color: #555; margin-bottom: 5px; }
+    .mc-preview { font-size: 12px; color: #888; line-height: 1.5; }
+
+    /* ===== 詳細ビュー ===== */
+    .detail-wrap {
+      background: white; border: 1px solid #dfe4ea;
+      border-radius: 10px; overflow: hidden;
+    }
+    .detail-head {
+      background: #f8f9fa; padding: 12px 16px;
+      border-bottom: 1px solid #dfe4ea;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .detail-back {
+      height: 30px; padding: 0 12px; background: none;
+      border: 1px solid #dfe4ea; border-radius: 5px;
+      font-size: 12px; color: #555; cursor: pointer;
+      transition: background 0.15s; flex-shrink: 0;
+    }
+    .detail-back:hover { background: #f1f2f6; }
+    .detail-cat-badge {
+      font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+      background: #eef0ff; color: #3742fa; flex-shrink: 0;
+    }
+    .detail-title { font-size: 15px; font-weight: 700; flex: 1; min-width: 0; }
+
+    .detail-body { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+    .field-label {
+      font-size: 11px; font-weight: 700; color: #888;
+      margin-bottom: 6px; letter-spacing: 0.04em;
+    }
+
+    /* 件名 */
+    .subject-row {
+      background: #f8f9fa; border: 1px solid #dfe4ea;
+      border-radius: 7px; padding: 10px 14px;
+    }
+    .subject-text { font-size: 14px; font-weight: 600; color: #2f3542; flex: 1; word-break: break-all; }
+
+    /* 本文 */
+    .body-wrap {
+      background: #f8f9fa; border: 1px solid #dfe4ea;
+      border-radius: 7px; padding: 14px 16px;
+    }
+    .body-text {
+      font-size: 13px; line-height: 1.85; color: #2f3542;
+      white-space: pre-wrap; word-break: break-all;
+      padding-right: 0;
+    }
+    /* ハイライト */
+    mark { background: #ffeaa7; color: inherit; border-radius: 2px; padding: 0 1px; }
+
+    /* トースト */
+    #toast {
+      position: fixed; bottom: 20px; right: 20px;
+      background: #2f3542; color: white;
+      padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none; z-index: 9999;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* サイドメニュー */
+    #sideMenu {
+      position: fixed; top: 60px; left: -360px;
+      width: 360px; height: calc(100% - 60px);
+      background: white; box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+      transition: left 0.3s; z-index: 2000; overflow-y: auto; overflow-x: hidden;
+    }
+    #sideMenu .side-section { border-bottom: 1px solid #e8eaed; }
+    #sideMenu .side-section-header {
+      padding: 14px 16px; cursor: pointer; background: #f8f9fa;
+      font-size: 13px; font-weight: 600; color: #2f3542;
+      display: flex; justify-content: space-between; align-items: center;
+      user-select: none; transition: background 0.2s;
+    }
+    #sideMenu .side-section-header:hover { background: #e8eaed; }
+    #sideMenu .side-section-header .arrow { font-size: 10px; transition: transform 0.25s; }
+    #sideMenu .side-section-header.open .arrow { transform: rotate(90deg); }
+    #sideMenu .accordion-body {
+      display: none; list-style: none; margin: 0; padding: 6px 0; background: white;
+    }
+    #sideMenu .accordion-body.open { display: block; }
+    #sideMenu .accordion-body li a {
+      display: block; padding: 10px 16px 10px 28px;
+      font-size: 13px; color: #3742fa; text-decoration: none; transition: background 0.15s;
+    }
+    #sideMenu .accordion-body li a:hover { background: #f1f2f6; text-decoration: underline; }
+    #sideMenu .history-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+    #sideMenu .history-table th, #sideMenu .history-table td {
+      border: 1px solid #e8eaed; padding: 5px 6px; text-align: center; white-space: nowrap;
+    }
+    #sideMenu .history-table th:nth-child(1), #sideMenu .history-table td:nth-child(1) { width: auto; text-align: center; white-space: normal; }
+    #sideMenu .history-table th:nth-child(2), #sideMenu .history-table td:nth-child(2) { width: 52px; }
+    #sideMenu .history-table th:nth-child(3), #sideMenu .history-table td:nth-child(3) { width: 52px; }
+    #sideMenu .history-table th:nth-child(4), #sideMenu .history-table td:nth-child(4) { width: 82px; }
+    #sideMenu .history-table th { background: #f1f2f6; font-weight: 700; color: #555; }
+    #sideMenu #historyPanel { padding: 10px; }
+  </style>
+  <script src="sidemenu.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="hd-left">
+    <button id="menuBtn" onclick="toggleSideMenu()">☰</button>
+    <button class="hd-btn" onclick="goHome()">🏠 ホーム</button>
+    <button class="hd-btn" onclick="location.href='index.html'">📋 スクリプト</button>
+  </div>
+  <div class="hd-center">
+    <div class="hd-title">✉️ メールテンプレート集</div>
+  </div>
+  <div class="hd-right">
+    <button class="hd-btn hd-btn-admin" onclick="location.href='admin.html'">🛠 管理</button>
+    <button class="hd-btn" onclick="triggerImport()" title="JSONファイルを読み込んでデータを更新">📤 データ更新</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+    <div class="quick-copy-area">
+      <button class="quick-copy-btn hd-btn-green" id="quickCopyBtn" onclick="toggleQuickMenu()">💬 定型文</button>
+      <div class="quick-menu" id="quickMenu">
+        <div class="quick-menu-item" onclick="copyText('✊HELP✊', 'HELP')">✊ HELP</div>
+        <div class="quick-menu-item" onclick="copyText('✌保留中✌', '話中')">✌ 話中</div>
+        <div class="quick-menu-item" onclick="copyText('✋後処理✋', '後処理')">✋ 後処理</div>
+        <div class="quick-menu-item" onclick="copyText('検証機お願いします（iPhone）', 'iPhone')">📱 iPhone</div>
+        <div class="quick-menu-item" onclick="copyText('検証機お願いします（Android）', 'Android')">🤖 Android</div>
+        <div class="quick-menu-item" onclick="copyText('休憩よろしいですか', '10休')">☕ 10休</div>
+      </div>
+      <div class="quick-copy-toast" id="quickCopyToast"></div>
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="searchBox" placeholder="テンプレート検索…" autocomplete="off">
+      <button id="clearBtn">×</button>
+    </div>
+  </div>
+</header>
+
+<aside id="sideMenu"></aside>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-top">カテゴリ</div>
+    <div class="sidebar-scroll" id="sidebarEl"></div>
+  </div>
+  <div class="main-area" id="mainArea"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ===== STATE =====
+let templates = [];
+let currentCat = '__all__';
+let currentId  = null;
+
+// ===== LOAD =====
+function load() {
+  try {
+    const s = localStorage.getItem('mailTemplates');
+    templates = s ? JSON.parse(s) : [];
+  } catch(e) { templates = []; }
+}
+
+function init() {
+  load();
+  renderSidebar();
+  showList('__all__');
+}
+
+// ===== SIDEBAR =====
+function getCats() {
+  const seen = new Set(), out = [];
+  templates.forEach(t => {
+    if (!seen.has(t.catKey)) {
+      seen.add(t.catKey);
+      out.push({ key: t.catKey, name: t.category || '', color: t.catColor || '#3742fa' });
+    }
+  });
+  return out;
+}
+
+function renderSidebar() {
+  const cats = getCats();
+  let h = `<button class="sb-all-btn${currentCat==='__all__'?' active':''}" onclick="showList('__all__')">📂 すべて（${templates.length}件）</button>`;
+  cats.forEach(cat => {
+    h += `<div class="sb-cat">
+      <div class="sb-cat-label">
+        <div class="sb-cat-dot" style="background:${cat.color}"></div>
+        ${esc(cat.name)}
+      </div>`;
+    templates.filter(t => t.catKey === cat.key).forEach(t => {
+      h += `<div class="sb-item${currentId===t.id?' active':''}" onclick="showDetail('${t.id}')">
+        <span class="sb-item-title">${esc(t.title || '（タイトルなし）')}</span>
+      </div>`;
+    });
+    h += `</div>`;
+  });
+  document.getElementById('sidebarEl').innerHTML = h;
+}
+
+// ===== LIST =====
+function showList(catKey) {
+  currentCat = catKey;
+  currentId  = null;
+  renderSidebar();
+
+  const list = catKey === '__all__' ? templates : templates.filter(t => t.catKey === catKey);
+  if (!list.length) {
+    document.getElementById('mainArea').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">✉️</div>
+        <div class="empty-text">テンプレートがまだ登録されていません</div>
+      </div>`;
+    return;
+  }
+  const cards = list.map(t => {
+    const bodySnip = (t.body||'').replace(/\n/g,' ').slice(0,60) + ((t.body||'').length>60?'…':'');
+    return `<div class="mail-card" onclick="showDetail('${t.id}')">
+      <div class="mc-cat">${esc(t.category||'')}</div>
+      <div class="mc-title">${esc(t.title||'')}</div>
+      ${t.subject ? `<div class="mc-subject">📧 ${esc(t.subject)}</div>` : ''}
+      <div class="mc-preview">${esc(bodySnip)}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('mainArea').innerHTML = `<div class="card-grid">${cards}</div>`;
+}
+
+// ===== DETAIL =====
+function showDetail(id) {
+  const t = templates.find(x => x.id === id);
+  if (!t) return;
+  currentId = id;
+  renderSidebar();
+
+  document.getElementById('mainArea').innerHTML = `
+    <div class="detail-wrap">
+      <div class="detail-head">
+        <button class="detail-back" onclick="backToList()">← 一覧に戻る</button>
+        <span class="detail-cat-badge">${esc(t.category||'')}</span>
+        <span class="detail-title">${esc(t.title||'')}</span>
+      </div>
+      <div class="detail-body">
+        <div>
+          <div class="field-label">件名</div>
+          <div class="subject-row">
+            <span class="subject-text">${esc(t.subject||'（件名なし）')}</span>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">本文</div>
+          <div class="body-wrap">
+            <div class="body-text">${esc(t.body||'')}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function backToList() {
+  currentId = null;
+  renderSidebar();
+  showList(currentCat);
+}
+
+
+// ===== 検索 =====
+const searchBox = document.getElementById('searchBox');
+const clearBtn  = document.getElementById('clearBtn');
+
+searchBox.addEventListener('input', () => {
+  const q = searchBox.value.trim();
+  clearBtn.style.display = q ? 'block' : 'none';
+  if (!q) { showList(currentCat); return; }
+
+  const base = currentCat === '__all__' ? templates : templates.filter(t => t.catKey === currentCat);
+  const ql = q.toLowerCase();
+  const results = base.filter(t =>
+    (t.title||'').toLowerCase().includes(ql) ||
+    (t.subject||'').toLowerCase().includes(ql) ||
+    (t.body||'').toLowerCase().includes(ql)
+  );
+
+  if (!results.length) {
+    document.getElementById('mainArea').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-text">「${esc(q)}」に一致するテンプレートが見つかりません</div>
+      </div>`;
+    return;
+  }
+
+  const cards = results.map(t => {
+    const bodySnip = (t.body||'').replace(/\n/g,' ').slice(0,60) + ((t.body||'').length>60?'…':'');
+    return `<div class="mail-card" onclick="showDetail('${t.id}')">
+      <div class="mc-cat">${esc(t.category||'')}</div>
+      <div class="mc-title">${hilite(t.title||'', q)}</div>
+      ${t.subject ? `<div class="mc-subject">📧 ${hilite(t.subject, q)}</div>` : ''}
+      <div class="mc-preview">${hilite(bodySnip, q)}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('mainArea').innerHTML = `<div class="card-grid">${cards}</div>`;
+});
+
+clearBtn.onclick = () => {
+  searchBox.value = ''; clearBtn.style.display = 'none';
+  showList(currentCat);
+};
+
+// ===== UTILS =====
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+function hilite(str, kw) {
+  if (!kw) return esc(str);
+  const re = new RegExp(escRe(kw), 'gi');
+  return esc(str).replace(re, m => `<mark>${m}</mark>`);
+}
+let toastT;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ===== ホーム =====
+function goHome() {
+  currentCat = '__all__';
+  currentId = null;
+  renderSidebar();
+  showList('__all__');
+}
+
+// ===== データ更新（インポート） =====
+function triggerImport() {
+  document.getElementById('importFile').click();
+}
+function importJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) { showToast('❌ ファイルの形式が正しくありません'); return; }
+      if (!confirm('現在のデータをインポートしたデータで上書きします。よろしいですか？')) return;
+      localStorage.setItem('mailTemplates', JSON.stringify(imported));
+      location.reload();
+    } catch(err) {
+      showToast('❌ 読み込みに失敗しました: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ===== 定型文クイックコピー =====
+function toggleQuickMenu() {
+  document.getElementById('quickMenu').classList.toggle('open');
+}
+function copyText(text, label) {
+  const done = () => {
+    document.getElementById('quickMenu').classList.remove('open');
+    const toast = document.getElementById('quickCopyToast');
+    toast.textContent = `「${label}」をコピーしました`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  };
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(done).catch(() => { fallbackCopy(text); done(); });
+  } else { fallbackCopy(text); done(); }
+}
+function fallbackCopy(text) {
+  const el = document.createElement('textarea');
+  el.value = text; document.body.appendChild(el); el.select();
+  document.execCommand('copy'); document.body.removeChild(el);
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.quick-copy-area')) {
+    const menu = document.getElementById('quickMenu');
+    if (menu) menu.classList.remove('open');
+  }
+});
+
+init();
+</script>
+</body>
+</html>

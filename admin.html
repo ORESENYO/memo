@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>スクリプト管理</title>
+  <title>管理画面</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
     :root {
@@ -11,7 +11,7 @@
       --text:#1e2130; --muted:#8b90a0;
       --accent:#4361ee; --accent-lt:#eef1fd;
       --green:#2ec4b6; --red:#e63946;
-      --sidebar-w:280px; --header-h:58px;
+      --sidebar-w:280px; --header-h:58px; --tab-h:46px;
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);font-size:13px;height:100vh;overflow:hidden}
@@ -21,8 +21,8 @@
     .hd-left{display:flex;align-items:center;gap:14px}
     .hd-logo{font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:7px}
     .hd-badge{background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
-    .hd-right{display:flex;align-items:center;gap:10px}
-    .btn{height:36px;padding:0 14px;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:filter .15s,transform .1s}
+    .hd-right{display:flex;align-items:center;gap:8px}
+    .btn{height:34px;padding:0 14px;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:filter .15s,transform .1s}
     .btn:hover{filter:brightness(1.08)}.btn:active{transform:scale(.97)}
     .btn-primary{background:var(--green);color:#fff}
     .btn-secondary{background:#3a3f52;color:#fff}
@@ -31,12 +31,20 @@
     .btn-icon{width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;border-radius:5px;font-size:14px;color:var(--muted);transition:background .15s,color .15s}
     .btn-icon:hover{background:#fff0f0;color:var(--red)}
 
-    /* LAYOUT */
-    .layout{display:flex;height:calc(100vh - var(--header-h));margin-top:var(--header-h)}
+    /* TAB BAR */
+    .tab-bar{position:fixed;top:var(--header-h);left:0;right:0;height:var(--tab-h);background:var(--white);border-bottom:2px solid var(--border);display:flex;align-items:flex-end;padding:0 20px;z-index:150}
+    .tab-btn{height:44px;padding:0 20px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;white-space:nowrap}
+    .tab-btn:hover{color:var(--text)}
+    .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
 
-    /* SIDEBAR */
-    .sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-    .sidebar-top{padding:12px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    /* CONTENT AREA */
+    .content-area{position:fixed;top:calc(var(--header-h) + var(--tab-h));left:0;right:0;bottom:0;overflow:hidden}
+    .tab-panel{display:none;width:100%;height:100%}
+    .tab-panel.active{display:flex}
+
+    /* SIDEBAR (共通) */
+    .sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;height:100%}
+    .sidebar-top{padding:12px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
     .sidebar-top-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em}
     .sidebar-scroll{flex:1;overflow-y:auto;padding-bottom:8px}
     .cat-block{border-bottom:1px solid var(--border)}
@@ -44,7 +52,7 @@
     .cat-color{width:9px;height:9px;border-radius:50%;flex-shrink:0}
     .cat-name-input{flex:1;border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:var(--text);padding:4px 4px;border-radius:4px;cursor:pointer}
     .cat-name-input:focus{outline:none;background:var(--accent-lt);cursor:text}
-    .cat-actions{display:flex;gap:8px;align-items:center}
+    .cat-actions{display:flex;gap:6px;align-items:center}
     .cat-del-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:3px 5px;border-radius:4px;transition:color .15s,background .15s}
     .cat-del-btn:hover{color:var(--red);background:#fff0f0}
     .cat-add-btn{background:none;border:none;cursor:pointer;color:var(--accent);font-size:18px;padding:0 4px;line-height:1;border-radius:4px;transition:background .15s}
@@ -60,12 +68,12 @@
     .script-del{opacity:0;background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:2px 4px;border-radius:3px;transition:opacity .15s,color .15s}
     .script-item:hover .script-del{opacity:1}
     .script-del:hover{color:var(--red)}
-    .add-cat-btn{margin:10px 14px;display:flex;align-items:center;gap:6px;background:none;border:1px dashed var(--border);border-radius:7px;padding:8px 12px;width:calc(100% - 28px);font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+    .add-cat-btn{margin:10px 14px;display:flex;align-items:center;gap:6px;background:none;border:1px dashed var(--border);border-radius:7px;padding:8px 12px;width:calc(100% - 28px);font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s;flex-shrink:0}
     .add-cat-btn:hover{border-color:var(--accent);color:var(--accent)}
 
-    /* EDITOR */
-    .editor-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
-    .editor-scroll{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+    /* SCRIPT EDITOR */
+    .editor-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;height:100%}
+    .editor-scroll{flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:14px}
     .empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted)}
     .empty-icon{font-size:44px;opacity:.35}
     .title-row{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:10px}
@@ -107,8 +115,8 @@
     .add-step-btn:hover{border-color:var(--accent);color:var(--accent)}
 
     /* PREVIEW */
-    .preview-wrap{width:250px;min-width:250px;background:var(--white);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-    .preview-top{padding:12px 16px 10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+    .preview-wrap{width:250px;min-width:250px;background:var(--white);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;height:100%}
+    .preview-top{padding:12px 16px 10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;flex-shrink:0}
     .preview-scroll{flex:1;overflow-y:auto;padding:12px}
     .pv-node{border:1px solid var(--border);border-radius:7px;padding:9px 11px;margin-bottom:7px}
     .pv-node-start{border-top:2px solid var(--accent)}
@@ -118,6 +126,14 @@
     .pv-choices{margin-top:7px;display:flex;flex-direction:column;gap:3px}
     .pv-choice{background:var(--accent-lt);border-radius:4px;padding:3px 8px;font-size:10px;color:var(--accent)}
     .pv-end{background:#e8fdf5;border-radius:4px;padding:3px 8px;font-size:10px;color:#27ae60;font-weight:700;display:inline-block;margin-top:5px}
+
+    /* MAIL EDITOR */
+    .mail-editor-wrap{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;height:100%}
+    .mail-field{display:flex;flex-direction:column;gap:5px}
+    .mail-field-label{font-size:11px;font-weight:700;color:var(--muted)}
+    .mail-input{border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;font-family:inherit;color:var(--text);transition:border-color .15s;width:100%}
+    .mail-input:focus{outline:none;border-color:var(--accent)}
+    textarea.mail-input{min-height:220px;resize:vertical;line-height:1.75}
 
     /* MODAL */
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:999;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -143,11 +159,12 @@
 
 <header>
   <div class="hd-left">
-    <div class="hd-logo"><span>🛠</span> スクリプト管理</div>
+    <div class="hd-logo"><span>🛠</span> 管理画面</div>
     <div class="hd-badge">ADMIN</div>
   </div>
   <div class="hd-right">
-    <button class="btn btn-ghost" onclick="location.href='index.html'">← 本番画面へ</button>
+    <button class="btn btn-ghost" onclick="location.href='index.html'">📋 スクリプト</button>
+    <button class="btn btn-ghost" onclick="location.href='mail.html'">✉️ メール</button>
     <button class="btn btn-secondary" onclick="exportJSON()">📥 エクスポート</button>
     <button class="btn btn-secondary" onclick="triggerImport()">📤 インポート</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
@@ -155,33 +172,58 @@
   </div>
 </header>
 
-<div class="layout">
-  <div class="sidebar">
-    <div class="sidebar-top">
-      <span class="sidebar-top-label">カテゴリ / スクリプト</span>
-    </div>
-    <div class="sidebar-scroll" id="sidebarScroll"></div>
-    <button class="add-cat-btn" onclick="openAddCat()">＋ カテゴリを追加</button>
-  </div>
+<div class="tab-bar">
+  <button class="tab-btn active" id="tabBtnScript" onclick="switchTab('script')">📋 トークスクリプト</button>
+  <button class="tab-btn" id="tabBtnMail" onclick="switchTab('mail')">✉️ メールテンプレート</button>
+</div>
 
-  <div class="editor-wrap">
-    <div class="editor-scroll" id="editorScroll">
-      <div class="empty-state">
-        <div class="empty-icon">📋</div>
-        <div>左のリストからスクリプトを選んでください</div>
+<div class="content-area">
+
+  <!-- ===== スクリプトタブ ===== -->
+  <div class="tab-panel active" id="tabScript">
+    <div class="sidebar">
+      <div class="sidebar-top">
+        <span class="sidebar-top-label">カテゴリ / スクリプト</span>
+      </div>
+      <div class="sidebar-scroll" id="sidebarScroll"></div>
+      <button class="add-cat-btn" onclick="openAddCat()">＋ カテゴリを追加</button>
+    </div>
+    <div class="editor-wrap">
+      <div class="editor-scroll" id="editorScroll">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div>左のリストからスクリプトを選んでください</div>
+        </div>
+      </div>
+    </div>
+    <div class="preview-wrap">
+      <div class="preview-top">フロープレビュー</div>
+      <div class="preview-scroll" id="previewScroll">
+        <div style="color:var(--muted);font-size:11px;text-align:center;padding-top:20px">スクリプトを選ぶと<br>フローが表示されます</div>
       </div>
     </div>
   </div>
 
-  <div class="preview-wrap">
-    <div class="preview-top">フロープレビュー</div>
-    <div class="preview-scroll" id="previewScroll">
-      <div style="color:var(--muted);font-size:11px;text-align:center;padding-top:20px">スクリプトを選ぶと<br>フローが表示されます</div>
+  <!-- ===== メールタブ ===== -->
+  <div class="tab-panel" id="tabMail">
+    <div class="sidebar">
+      <div class="sidebar-top">
+        <span class="sidebar-top-label">カテゴリ / テンプレート</span>
+      </div>
+      <div class="sidebar-scroll" id="mailSidebarScroll"></div>
+      <button class="add-cat-btn" onclick="openAddMailCat()">＋ カテゴリを追加</button>
+    </div>
+    <div class="mail-editor-wrap" id="mailEditorWrap">
+      <div class="empty-state">
+        <div class="empty-icon">✉️</div>
+        <div>左のリストからテンプレートを選んでください</div>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- カテゴリ追加モーダル -->
+</div><!-- /content-area -->
+
+<!-- カテゴリ追加モーダル（スクリプト） -->
 <div class="modal-overlay" id="modalCat" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <h3>カテゴリを追加</h3>
@@ -194,9 +236,42 @@
   </div>
 </div>
 
+<!-- カテゴリ追加モーダル（メール） -->
+<div class="modal-overlay" id="modalMailCat" onclick="if(event.target===this)closeMailModal()">
+  <div class="modal">
+    <h3>メールカテゴリを追加</h3>
+    <p>メールテンプレートのカテゴリが追加されます</p>
+    <input type="text" id="newMailCatName" placeholder="カテゴリ名（例：解約対応・初期設定）" maxlength="20">
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeMailModal()">キャンセル</button>
+      <button class="btn btn-accent" onclick="addMailCategory()">追加する</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
+// =====================================================
+// ユーティリティ
+// =====================================================
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let toastT;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3000);}
+
+// =====================================================
+// タブ切り替え
+// =====================================================
+function switchTab(tab){
+  document.getElementById('tabScript').classList.toggle('active', tab==='script');
+  document.getElementById('tabMail').classList.toggle('active', tab==='mail');
+  document.getElementById('tabBtnScript').classList.toggle('active', tab==='script');
+  document.getElementById('tabBtnMail').classList.toggle('active', tab==='mail');
+}
+
+// =====================================================
+// スクリプト管理
+// =====================================================
 const CAT_COLORS=['#4361ee','#2ec4b6','#e63946','#f4a261','#a8dadc','#9b5de5','#f15bb5'];
 
 function loadData(){
@@ -225,7 +300,6 @@ ensureColors();
 
 let currentCat=null,currentIdx=null;
 
-/* ======= RENDER ======= */
 function render(){renderSidebar();if(currentCat&&currentIdx!==null){if(!data[currentCat]||!data[currentCat].list[currentIdx]){currentCat=null;currentIdx=null;showEmpty();}else{renderEditor();renderPreview();}}}
 
 function showEmpty(){
@@ -271,7 +345,6 @@ function renderEditor(){
       ?`<span class="step-badge step-badge-start">▶ 開始（ステップ0）</span>`
       :`<span class="step-badge step-badge-num">ステップ ${si}</span>`;
     const endBadge=isEnd&&!isStart?`<span class="step-badge step-badge-end" style="font-size:10px">✓ ここで終了</span>`:'';
-
     let cho='';
     if(!isEnd){
       cho=`<div class="choices-header"><div class="field-label" style="margin:0">選択肢（回答ボタン）</div></div>`;
@@ -293,7 +366,6 @@ function renderEditor(){
         <button class="add-choice-btn" style="width:auto;padding:5px 14px" onclick="addChoice(${si})">選択肢を追加して分岐させる</button>
       </div>`;
     }
-
     sh+=`<div class="step-card ${cardCls}">
       <div class="step-head">
         ${badge}${endBadge}
@@ -307,7 +379,6 @@ function renderEditor(){
       </div>
     </div>`;
   });
-
   document.getElementById('editorScroll').innerHTML=`
     <div class="title-row">
       <label>スクリプト名</label>
@@ -336,14 +407,13 @@ function renderPreview(){
   document.getElementById('previewScroll').innerHTML=h||'<div style="color:var(--muted);font-size:11px">ステップがありません</div>';
 }
 
-/* ======= ACTIONS ======= */
 function selectScript(k,i){currentCat=k;currentIdx=i;renderSidebar();renderEditor();renderPreview();}
 
 function addScript(catKey){
   if(!data[catKey].list)data[catKey].list=[];
   data[catKey].list.push({title:'新しいスクリプト',steps:[{text:'',choices:[]}]});
   selectScript(catKey,data[catKey].list.length-1);
-  setTimeout(()=>{const inp=document.querySelector('.title-row input');if(inp){inp.focus();inp.select();}},60);
+  setTimeout(()=>{const inp=document.querySelector('#editorScroll .title-row input');if(inp){inp.focus();inp.select();}},60);
 }
 
 function deleteScript(catKey,idx){
@@ -384,7 +454,7 @@ function updST(si,v){data[currentCat].list[currentIdx].steps[si].text=v;renderPr
 function addStep(){
   data[currentCat].list[currentIdx].steps.push({text:'',choices:[]});
   renderEditor();renderPreview();
-  setTimeout(()=>{const c=document.querySelectorAll('.step-card');if(c.length)c[c.length-1].scrollIntoView({behavior:'smooth',block:'start'});},60);
+  setTimeout(()=>{const c=document.querySelectorAll('#editorScroll .step-card');if(c.length)c[c.length-1].scrollIntoView({behavior:'smooth',block:'start'});},60);
 }
 function delStep(si){
   if(!confirm(`ステップ${si}を削除しますか？\n※このステップへのリンクも確認してください`))return;
@@ -412,7 +482,6 @@ function importJSON(input){
   reader.onload=function(e){
     try{
       const imported=JSON.parse(e.target.result);
-      // 基本的な構造チェック
       const keys=Object.keys(imported);
       const valid=keys.length>0&&keys.every(k=>imported[k].name&&Array.isArray(imported[k].list));
       if(!valid){toast('❌ ファイルの形式が正しくありません');return;}
@@ -425,14 +494,17 @@ function importJSON(input){
     }catch(err){
       toast('❌ 読み込みに失敗しました: '+err.message);
     }
-    input.value=''; // 同じファイルを再インポートできるようリセット
+    input.value='';
   };
   reader.readAsText(file);
 }
 
 function saveAll(){
-  try{localStorage.setItem('talkScripts',JSON.stringify(data));toast('✅ 保存しました。本番画面に反映されます。');}
-  catch(e){toast('❌ 保存失敗: '+e.message);}
+  try{
+    localStorage.setItem('talkScripts',JSON.stringify(data));
+    localStorage.setItem('mailTemplates',JSON.stringify(mailData));
+    toast('✅ 保存しました。本番画面に反映されます。');
+  }catch(e){toast('❌ 保存失敗: '+e.message);}
 }
 function exportJSON(){
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
@@ -440,10 +512,153 @@ function exportJSON(){
   toast('📥 エクスポートしました');
 }
 
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-let toastT;
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3000);}
+// =====================================================
+// メールテンプレート管理
+// =====================================================
+const MAIL_COLORS=['#4361ee','#2ec4b6','#e63946','#f4a261','#9b5de5','#f15bb5','#06d6a0'];
 
+let mailData=(function(){
+  try{const s=localStorage.getItem('mailTemplates');return s?JSON.parse(s):[];}catch(e){return [];}
+})();
+
+let mId=null;
+
+function getMailCats(){
+  const seen=new Set(),out=[];
+  mailData.forEach(t=>{
+    if(!seen.has(t.catKey)){seen.add(t.catKey);out.push({key:t.catKey,name:t.category||'',color:t.catColor||'#4361ee'});}
+  });
+  return out;
+}
+
+function renderMailSidebar(){
+  const cats=getMailCats();
+  let h='';
+  if(cats.length===0){
+    h='<div style="padding:16px;font-size:12px;color:var(--muted);text-align:center">カテゴリを追加してください</div>';
+  }
+  cats.forEach(cat=>{
+    h+=`<div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-color" style="background:${cat.color}"></div>
+        <input class="cat-name-input" value="${esc(cat.name)}" oninput="renameMailCat('${cat.key}',this.value)" title="クリックして編集">
+        <div class="cat-actions">
+          <button class="cat-add-btn" onclick="addMailTemplate('${cat.key}')" title="テンプレートを追加">＋</button>
+          <button class="cat-del-btn" onclick="deleteMailCat('${cat.key}')" title="削除">🗑</button>
+        </div>
+      </div>
+      <ul class="script-list-ul">`;
+    mailData.filter(t=>t.catKey===cat.key).forEach(t=>{
+      const active=mId===t.id;
+      h+=`<li class="script-item${active?' active':''}" onclick="selectMailTemplate('${t.id}')">
+        <div class="script-item-dot"></div>
+        <span class="script-item-name">${esc(t.title||'（タイトルなし）')}</span>
+        <button class="script-del" onclick="event.stopPropagation();deleteMailTemplate('${t.id}')">✕</button>
+      </li>`;
+    });
+    h+=`</ul></div>`;
+  });
+  document.getElementById('mailSidebarScroll').innerHTML=h;
+}
+
+function showMailEmpty(){
+  document.getElementById('mailEditorWrap').innerHTML='<div class="empty-state"><div class="empty-icon">✉️</div><div>左のリストからテンプレートを選んでください</div></div>';
+}
+
+function selectMailTemplate(id){
+  mId=id;renderMailSidebar();renderMailEditor();
+}
+
+function renderMailEditor(){
+  const t=mailData.find(x=>x.id===mId);
+  if(!t){showMailEmpty();return;}
+
+  document.getElementById('mailEditorWrap').innerHTML=`
+    <div class="title-row">
+      <label>テンプレート名</label>
+      <input type="text" value="${esc(t.title||'')}" oninput="updMail('title',this.value)" placeholder="テンプレート名を入力">
+    </div>
+    <div class="step-card">
+      <div class="step-head">
+        <span class="step-badge step-badge-num">✉️ メール内容</span>
+        <span class="step-head-spacer"></span>
+      </div>
+      <div class="step-body">
+        <div class="mail-field">
+          <span class="mail-field-label">件名</span>
+          <input class="mail-input" type="text" value="${esc(t.subject||'')}" oninput="updMail('subject',this.value)" placeholder="件名を入力">
+        </div>
+        <div class="mail-field">
+          <span class="mail-field-label">本文</span>
+          <textarea class="mail-input" oninput="updMail('body',this.value)" placeholder="本文を入力">${esc(t.body||'')}</textarea>
+        </div>
+      </div>
+    </div>`;
+}
+
+function updMail(key,val){
+  const t=mailData.find(x=>x.id===mId);
+  if(t){t[key]=val;renderMailSidebar();}
+}
+
+function renameMailCat(catKey,val){
+  mailData.filter(t=>t.catKey===catKey).forEach(t=>{t.category=val;});
+}
+
+function addMailTemplate(catKey){
+  const cat=getMailCats().find(c=>c.key===catKey);
+  const id='mail_'+Date.now();
+  mailData.push({id,catKey,category:cat?cat.name:'',catColor:cat?cat.color:'#4361ee',title:'新しいテンプレート',subject:'',body:''});
+  selectMailTemplate(id);
+  setTimeout(()=>{const inp=document.querySelector('#mailEditorWrap .title-row input');if(inp){inp.focus();inp.select();}},60);
+}
+
+function deleteMailTemplate(id){
+  const t=mailData.find(x=>x.id===id);
+  if(!confirm(`「${t?t.title:'このテンプレート'}」を削除しますか？`))return;
+  mailData=mailData.filter(x=>x.id!==id);
+  if(mId===id){mId=null;showMailEmpty();}
+  renderMailSidebar();
+}
+
+function deleteMailCat(catKey){
+  const cat=getMailCats().find(c=>c.key===catKey);
+  const count=mailData.filter(t=>t.catKey===catKey).length;
+  const msg=count>0?`「${cat?cat.name:catKey}」には${count}件のテンプレートがあります。\nカテゴリごと削除しますか？`:`「${cat?cat.name:catKey}」を削除しますか？`;
+  if(!confirm(msg))return;
+  mailData=mailData.filter(t=>t.catKey!==catKey);
+  if(!mailData.find(t=>t.id===mId)){mId=null;showMailEmpty();}
+  renderMailSidebar();
+  toast('🗑 削除しました');
+}
+
+function openAddMailCat(){
+  document.getElementById('newMailCatName').value='';
+  document.getElementById('modalMailCat').classList.add('open');
+  setTimeout(()=>document.getElementById('newMailCatName').focus(),100);
+}
+function closeMailModal(){document.getElementById('modalMailCat').classList.remove('open');}
+document.getElementById('newMailCatName').addEventListener('keydown',e=>{if(e.key==='Enter')addMailCategory();if(e.key==='Escape')closeMailModal();});
+
+function addMailCategory(){
+  const name=document.getElementById('newMailCatName').value.trim();
+  if(!name){toast('⚠️ カテゴリ名を入力してください');return;}
+  const catKey='mcat_'+Date.now();
+  const ci=getMailCats().length%MAIL_COLORS.length;
+  closeMailModal();
+  // カテゴリのみ追加（テンプレートは＋ボタンで追加）
+  // ダミーエントリなしで空カテゴリを表現するためダミーを追加して即削除フラグ管理はせず、
+  // 代わりにカテゴリメタをmailCatMeta配列で管理する
+  // シンプルに: カテゴリ追加と同時に最初のテンプレートを1件作成し選択状態にする
+  const id='mail_'+Date.now();
+  mailData.push({id,catKey,category:name,catColor:MAIL_COLORS[ci],title:'新しいテンプレート',subject:'',body:''});
+  renderMailSidebar();
+  selectMailTemplate(id);
+  toast(`✅ 「${name}」を追加しました`);
+}
+
+// 初期化
+renderMailSidebar();
 render();
 </script>
 </body>
