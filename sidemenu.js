@@ -1,5 +1,16 @@
 // ===== 共通サイドメニュー =====
 
+// 別タブで開く（既に開いていればそのタブにフォーカス）
+var _namedTabs = {};
+window.openNamedTab = function(url, name) {
+  var tab = _namedTabs[name];
+  if (tab && !tab.closed) {
+    tab.focus();
+  } else {
+    _namedTabs[name] = window.open(url, name);
+  }
+};
+
 // ---- グローバル関数（onclick属性から呼ばれる） ----
 window.toggleSideMenu = function() {
   var m = document.getElementById('sideMenu');
