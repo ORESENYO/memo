@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛠 管理画面</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+  <script src="common-utils.js"></script>
+</head>
+<body class="page-admin">
+<script>
+// ページ直接アクセス時のパスワードロック
+(function(){
+  var ADMIN_PW = 'admin1234';
+  var ok = sessionStorage.getItem('adminAuth');
+  if (ok === '1') return;
+  var pw = prompt('管理画面のパスワードを入力してください');
+  if (pw === ADMIN_PW) {
+    sessionStorage.setItem('adminAuth', '1');
+  } else {
+    // 認証失敗: タブ/ウィンドウを閉じる
+    try { window.close(); } catch(e) {}
+    // window.close() が無効な場合（直接アクセス等）は空ページを表示
+    document.documentElement.innerHTML =
+      '<html><body style="display:flex;align-items:center;justify-content:center;' +
+      'height:100vh;font-family:sans-serif;color:#666;background:#f5f6fa;">' +
+      '<div style="text-align:center"><div style="font-size:48px;margin-bottom:16px">🔒</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#e63946">アクセスが拒否されました</div>' +
+      '<div style="font-size:12px;margin-top:8px;color:#888">このタブを閉じてください</div></div></body></html>';
+    throw new Error('auth');
+  }
+})();
+</script>
+
+<header>
+  <div class="hd-left" style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+    <button id="menuBtn" onclick="toggleSideMenu()">☰</button>
+    <span class="hd-title-btn">🛠 管理画面</span>
+    <button class="help-circle-btn" onclick="openAdminHelp()" title="使い方マニュアル">?</button>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
+    <button class="tab-btn active" id="tabBtnScript"  onclick="switchTab('script')">📋 スクリプト</button>
+    <button class="tab-btn" id="tabBtnMail"    onclick="switchTab('mail')">✉️ メール</button>
+    <button class="tab-btn" id="tabBtnScreen"  onclick="switchTab('screen')">🖥 画面遷移</button>
+    <button class="tab-btn" id="tabBtnHistory" onclick="switchTab('history')">📝 更新履歴</button>
+    <button class="tab-btn" id="tabBtnHearing" onclick="switchTab('hearing')">📋 ヒアリング</button>
+  </div>
+  <div class="hd-right" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+    <button class="btn btn-secondary" onclick="exportJSON()">📥 エクスポート</button>
+    <button class="btn btn-secondary" onclick="triggerImport()">📤 インポート</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+    <span id="dirtyIndicator" style="display:none;align-items:center;gap:4px;background:#e07a00;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;">⚠️ 未保存</span>
+    <button class="btn btn-primary" onclick="saveAllManual()">💾 保存して反映</button>
+  </div>
+</header>
+
+<aside id="sideMenu"></aside>
+
+<div class="content-area">
+
+  <!-- ===== スクリプトタブ ===== -->
+  <div class="tab-panel active" id="tabScript">
+    <div class="sidebar">
+      <div class="sidebar-top">
+        <span class="sidebar-top-label">カテゴリ / スクリプト</span>
+      </div>
+      <div class="sidebar-scroll" id="sidebarScroll"
+        ondragover="catDragOver(event,'script')"
+        ondrop="catDrop(event,'script')"></div>
+      <button class="add-cat-btn" onclick="openAddCat()">＋ カテゴリを追加</button>
+    </div>
+    <div class="editor-wrap">
+      <div class="editor-scroll" id="editorScroll">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div>左のリストからスクリプトを選んでください</div>
+        </div>
+      </div>
+    </div>
+    <div class="preview-wrap">
+      <div class="preview-top">フロー構造</div>
+      <div class="preview-scroll" id="previewScroll">
+        <div style="color:var(--muted);font-size:11px;text-align:center;padding-top:20px">スクリプトを選ぶと<br>フローが表示されます</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== メールタブ ===== -->
+  <div class="tab-panel" id="tabMail">
+    <div class="sidebar">
+      <div class="sidebar-top">
+        <span class="sidebar-top-label">カテゴリ / テンプレート</span>
+      </div>
+      <div class="sidebar-scroll" id="mailSidebarScroll"
+        ondragover="catDragOver(event,'mail')"
+        ondrop="catDrop(event,'mail')"></div>
+      <button class="add-cat-btn" onclick="openAddMailCat()">＋ カテゴリを追加</button>
+    </div>
+    <div class="mail-editor-wrap" id="mailEditorWrap">
+      <div class="empty-state">
+        <div class="empty-icon">✉️</div>
+        <div>左のリストからテンプレートを選んでください</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ヒアリングシートタブ ===== -->
+  <div class="tab-panel tab-panel-hearing" id="tabHearing">
+    <div style="max-width:860px;margin:0 auto;">
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;">📋 ヒアリングチェックシート設定</div>
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <div id="hearingContent" style="padding:16px;"></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button class="btn btn-secondary" onclick="window.resetHearing&&window.resetHearing()">🔄 リセット</button>
+        <button class="btn btn-secondary" onclick="window.copyHearingText&&window.copyHearingText()">📋 コピー</button>
+      </div>
+      <div id="hearingCopyToast" class="hearing-copy-toast"></div>
+    </div>
+  </div>
+
+  <!-- ===== 画面遷移タブ ===== -->
+  <div class="tab-panel" id="tabScreen" style="overflow:hidden;">
+    <!-- パターン一覧 -->
+    <aside class="scr-pat-sidebar">
+      <div class="scr-sidebar-head">
+        <span class="scr-sidebar-title">📂 パターン</span>
+        <button class="scr-btn-xs primary" onclick="scrAddPattern()" title="パターン追加">＋</button>
+      </div>
+      <div id="scrPatList" style="flex:1;overflow-y:auto;padding:4px 0;"></div>
+    </aside>
+    <!-- 画面一覧（D&D対応） -->
+    <aside class="scr-list-sidebar">
+      <div class="scr-sidebar-head">
+        <span class="scr-sidebar-title">画面一覧</span>
+      </div>
+      <div class="scr-dnd-zone" id="scrDndZone"
+        ondragover="scrDragOver(event)"
+        ondragleave="scrDragLeave(event)"
+        ondrop="scrDrop(event)">
+        <div id="scrScreenList"></div>
+        <div class="scr-dnd-hint" id="scrDndHint">📤 画像をここにD&D して画面を追加</div>
+      </div>
+      <label class="scr-file-add-btn">
+        📂 ファイルを選択して追加
+        <input type="file" accept="image/*" multiple onchange="scrFileAdd(event)">
+      </label>
+    </aside>
+    <!-- フロー図エリア -->
+    <main style="flex:1;overflow:auto;background:var(--bg);padding:20px;display:flex;flex-direction:column;gap:0;">
+      <div id="scrFlowEmpty" style="display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);font-size:12px;padding:40px;text-align:center;">
+        <span style="font-size:36px;">📭</span>
+        <span>パターンを選択し、左サイドに画像をドロップして画面を追加してください</span>
+      </div>
+      <div id="scrFlowGrid" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;"></div>
+    </main>
+  </div>
+  <!-- 画面詳細編集モーダル -->
+  <div class="scr-modal-bg" id="scrDetailModal">
+    <div class="scr-modal">
+      <div class="scr-modal-title">
+        <span id="scrModalTitle">画面を編集</span>
+        <button onclick="scrCloseModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);">✕</button>
+      </div>
+      <input type="hidden" id="scrModalPatId">
+      <input type="hidden" id="scrModalScrId">
+      <div style="margin-bottom:12px;">
+        <label class="scr-form-label">画面名</label>
+        <input class="scr-form-input" id="scrModalName" placeholder="例：ログイン画面" onkeydown="if(event.key==='Enter')scrSaveModal()">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label class="scr-form-label">スクリーンショット</label>
+        <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed var(--border);border-radius:7px;padding:14px;cursor:pointer;gap:4px;font-size:11px;color:var(--muted);transition:all .12s;"
+          ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+          ondragleave="this.style.borderColor=''"
+          ondrop="event.preventDefault();this.style.borderColor='';scrModalImgDrop(event)">
+          <span id="scrModalImgPreview" style="font-size:28px;">📤</span>
+          <span>クリックまたはD&Dで画像を差し替え</span>
+          <input type="file" accept="image/*" style="display:none" onchange="scrModalImgChange(event)">
+        </label>
+      </div>
+      <div style="margin-bottom:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <label class="scr-form-label" style="margin:0;">ホットスポット（リンク先）</label>
+          <button class="scr-btn-xs" onclick="scrAddHotspot()">＋ 追加</button>
+        </div>
+        <div id="scrHsList"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
+        <button class="btn btn-secondary" onclick="scrDeleteScreen()" style="margin-right:auto;">🗑 削除</button>
+        <button class="modal-cancel" onclick="scrCloseModal()">キャンセル</button>
+        <button class="btn btn-accent" onclick="scrSaveModal()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 更新履歴タブ ===== -->
+  <div class="tab-panel tab-panel-history" id="tabHistory">
+    <div style="max-width:860px;margin:0 auto;">
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;">📝 更新履歴</div>
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <div id="adminHistoryPanel"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content-area -->
+
+<!-- カテゴリ追加モーダル（スクリプト） -->
+<div class="modal-overlay" id="modalCat" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3>カテゴリを追加</h3>
+    <p>本番画面の用途ボタンに追加されます</p>
+    <input type="text" id="newCatName" placeholder="カテゴリ名（例：個人・官公庁）" maxlength="20">
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-accent" onclick="addCategory()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- カテゴリ追加モーダル（メール） -->
+<div class="modal-overlay" id="modalMailCat" onclick="if(event.target===this)closeMailModal()">
+  <div class="modal">
+    <h3>メールカテゴリを追加</h3>
+    <p>メールテンプレートのカテゴリが追加されます</p>
+    <input type="text" id="newMailCatName" placeholder="カテゴリ名（例：解約対応・初期設定）" maxlength="20">
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeMailModal()">キャンセル</button>
+      <button class="btn btn-accent" onclick="addMailCategory()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- サブカテゴリ追加モーダル（メール） -->
+<div class="modal-overlay" id="modalMailSubCat" onclick="if(event.target===this)closeMailSubModal()">
+  <div class="modal">
+    <h3>サブカテゴリを追加</h3>
+    <input type="text" id="newMailSubCatName" placeholder="サブカテゴリ名（例：初回・リピーター）" maxlength="20">
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeMailSubModal()">キャンセル</button>
+      <button class="btn btn-accent" onclick="addMailSubCategory()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 更新履歴 編集モーダル（管理者用） -->
+<div class="modal-overlay" id="historyModal" onclick="if(event.target===this)closeHistoryModal()">
+  <div class="modal" style="width:440px;">
+    <h3 id="historyModalTitle">更新履歴を追加</h3>
+    <p>サイドメニューの更新履歴に表示されます</p>
+    <input type="hidden" id="historyEditId">
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);">更新内容</label>
+        <input type="text" id="historyContent" placeholder="例：スクリプト追加・誤字修正など" maxlength="120">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;font-weight:700;color:var(--muted);">更新者</label>
+          <input type="text" id="historyAuthor" placeholder="更新者名" maxlength="20">
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;font-weight:700;color:var(--muted);">承認者</label>
+          <input type="text" id="historyApprover" placeholder="承認者名（任意）" maxlength="20">
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);">更新日</label>
+        <input type="date" id="historyDate" style="border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;font-family:inherit;color:var(--text);background:var(--white);">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeHistoryModal()">キャンセル</button>
+      <button class="btn btn-accent" onclick="saveHistoryEntry()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- 管理画面 ヘルプモーダル -->
+<div class="modal-overlay" id="adminHelpModal" onclick="if(event.target===this)closeAdminHelp()" style="z-index:2000;">
+  <div class="modal" style="width:520px;max-height:80vh;overflow-y:auto;">
+    <h3 style="margin-bottom:12px;">❓ 管理画面 使い方マニュアル</h3>
+    <div style="font-size:12px;color:var(--text);line-height:1.8;display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <div style="font-weight:700;color:var(--accent);margin-bottom:4px;">📋 トークスクリプトタブ</div>
+        <ul style="padding-left:16px;display:flex;flex-direction:column;gap:3px;">
+          <li>左サイドバーの「＋ カテゴリを追加」でカテゴリを作成</li>
+          <li>カテゴリの「＋」ボタンでスクリプトを追加</li>
+          <li>スクリプト選択 → 中央エディタでステップ・選択肢を編集</li>
+          <li>書式バー（太字・赤字）でテキストを装飾。ダブルクリックでテキスト全文表示</li>
+          <li>↗「別スクリプトへジャンプ」で選択肢から別スクリプトへ接続可能</li>
+          <li>右プレビューでフロー全体を確認</li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--accent);margin-bottom:4px;">✉️ メールテンプレートタブ</div>
+        <ul style="padding-left:16px;display:flex;flex-direction:column;gap:3px;">
+          <li>「＋ カテゴリを追加」→「＋サブ」でサブカテゴリも作成可能</li>
+          <li>カテゴリの「＋」ボタンでテンプレートを追加</li>
+          <li>件名・本文・備考を編集して保存</li>
+          <li>サイドバーのアイテムはドラッグ＆ドロップで並べ替え可能</li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--accent);margin-bottom:4px;">📋 ヒアリングシートタブ</div>
+        <ul style="padding-left:16px;display:flex;flex-direction:column;gap:3px;">
+          <li>ヒアリングチェックシートの動作確認・テストができます</li>
+          <li>「リセット」で初期状態に戻ります</li>
+          <li>「コピー」でチェック内容をクリップボードにコピー</li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--accent);margin-bottom:4px;">💾 データ操作</div>
+        <ul style="padding-left:16px;display:flex;flex-direction:column;gap:3px;">
+          <li>「保存して反映」→ 本番画面（スクリプト・メール）に即時反映</li>
+          <li>「エクスポート」→ 全データをJSONファイルで保存（バックアップ）</li>
+          <li>「インポート」→ JSONファイルからデータを復元・上書き</li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-accent" onclick="closeAdminHelp()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// ユーティリティ
+// =====================================================
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let toastT;
+
+function openAdminHelp(){document.getElementById('adminHelpModal').classList.add('open');}
+function closeAdminHelp(){document.getElementById('adminHelpModal').classList.remove('open');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeAdminHelp();});
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3000);}
+
+// =====================================================
+// タブ切り替え
+// =====================================================
+function switchTab(tab){
+  ['script','mail','screen','history','hearing'].forEach(t=>{
+    const panel = document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+    const btn   = document.getElementById('tabBtn'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(panel) panel.classList.toggle('active', t===tab);
+    if(btn)   btn.classList.toggle('active', t===tab);
+  });
+  // ヒアリングタブに切り替わった際は描画を確実に実行
+  if(tab==='hearing' && window.renderHearing) window.renderHearing();
+  // 更新履歴タブに切り替わった際は描画を確実に実行
+  if(tab==='history') renderAdminHistoryPanel();
+  // 画面遷移タブに切り替わった際は画面遷移エディタをマウント
+  if(tab==='screen') initScreenEditor();
+}
+
+// =====================================================
+// スクリプト管理
+// =====================================================
+const CAT_COLORS=['#4361ee','#2ec4b6','#e63946','#f4a261','#a8dadc','#9b5de5','#f15bb5'];
+
+function loadData(){
+  try{const s=localStorage.getItem('talkScripts');if(s)return JSON.parse(s);}catch(e){}
+  return null;
+}
+
+let data=loadData()||{};
+
+function ensureColors(){
+  let ci=0;
+  Object.values(data).forEach(cat=>{if(!cat.color)cat.color=CAT_COLORS[ci%CAT_COLORS.length];ci++;});
+}
+ensureColors();
+
+let currentCat=null,currentSubKey=null,currentIdx=null;
+
+function render(){
+  renderSidebar();
+  if(currentCat&&currentIdx!==null){
+    const cat=data[currentCat];
+    if(!cat){currentCat=null;currentSubKey=null;currentIdx=null;showEmpty();return;}
+    const list=currentSubKey&&cat.sub&&cat.sub[currentSubKey]?cat.sub[currentSubKey].list:cat.list||[];
+    if(!list[currentIdx]){currentCat=null;currentSubKey=null;currentIdx=null;showEmpty();}
+    else{renderEditor();renderPreview();}
+  }
+}
+
+function showEmpty(){
+  document.getElementById('editorScroll').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div>左のリストからスクリプトを選んでください</div></div>';
+  document.getElementById('previewScroll').innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding-top:20px">スクリプトを選ぶと<br>フローが表示されます</div>';
+}
+
+function renderSidebar(){
+  let h='';
+  Object.entries(data).forEach(([key,cat])=>{
+    h+=`<div class="cat-block" data-cat-key="${key}">
+      <div class="cat-header">
+        <span class="cat-drag-handle" draggable="true"
+          ondragstart="catDragStart(event,'script','${key}')"
+          ondragend="catDragEnd(event)"
+          title="ドラッグして並べ替え">⠿</span>
+        <div class="cat-color" style="background:${cat.color||'#ccc'}"></div>
+        <input class="cat-name-input" value="${esc(cat.name)}" oninput="renameCat('${key}',this.value)" onblur="setTimeout(()=>renderSidebar(),120)" title="クリックして編集">
+        <div class="cat-actions">
+          <button class="cat-add-btn" onclick="addSubCat('${key}')" title="サブカテゴリを追加" style="font-size:11px;padding:2px 6px">＋サブ</button>
+          <button class="cat-add-btn" onclick="addScript('${key}')" title="スクリプトを追加">＋</button>
+          <button class="cat-del-btn" onclick="deleteCat('${key}')" title="削除">🗑</button>
+        </div>
+      </div>`;
+    // 直下アイテム（サブカテゴリなし）を先に表示
+    h+=`<ul class="script-list-ul" data-cat="${key}" data-sub="">`;
+    (cat.list||[]).forEach((item,i)=>{
+      const active=currentCat===key&&!currentSubKey&&currentIdx===i;
+      h+=`<li class="script-item${active?' active':''}" data-cat="${key}" data-idx="${i}" onclick="selectScript('${key}',${i})">
+        <span class="drag-handle" title="ドラッグして並べ替え">⠿</span>
+        <div class="script-item-dot"></div>
+        <span class="script-item-name">${esc(item.title||'（タイトルなし）')}</span>
+        <button class="script-del" onclick="event.stopPropagation();deleteScript('${key}',${i})">✕</button>
+      </li>`;
+    });
+    h+=`</ul>`;
+    // サブカテゴリを後に表示（D&Dはsub-cat-headerのみ対象）
+    if(cat.sub){
+      Object.entries(cat.sub).forEach(([subKey,sub])=>{
+        h+=`<div class="sub-cat-block" data-cat="${key}" data-sub="${subKey}">
+          <div class="sub-cat-header"
+            ondragover="subDragOver(event,'${key}','${subKey}')"
+            ondrop="subDrop(event,'${key}','${subKey}')">
+            <span class="sub-drag-handle" draggable="true"
+              ondragstart="subDragStart(event,'${key}','${subKey}')"
+              ondragend="subDragEnd(event)"
+              title="ドラッグして並べ替え">⠿</span>
+            <input class="cat-name-input" value="${esc(sub.name)}" oninput="renameSubCat('${key}','${subKey}',this.value)" onblur="setTimeout(()=>renderSidebar(),120)" title="サブカテゴリ名編集" style="font-size:11px;color:var(--text)">
+            <button class="cat-add-btn" onclick="addSubScript('${key}','${subKey}')" title="スクリプトを追加">＋</button>
+            <button class="cat-del-btn" onclick="deleteSubCat('${key}','${subKey}')" title="削除">🗑</button>
+          </div>
+          <ul class="script-list-ul" data-cat="${key}" data-sub="${subKey}">`;
+        (sub.list||[]).forEach((item,i)=>{
+          const active=currentCat===key&&currentSubKey===subKey&&currentIdx===i;
+          h+=`<li class="script-item${active?' active':''}" data-cat="${key}" data-sub="${subKey}" data-idx="${i}" onclick="selectSubScript('${key}','${subKey}',${i})">
+            <span class="drag-handle" title="ドラッグして並べ替え">⠿</span>
+            <div class="script-item-dot" style="background:#aaa"></div>
+            <span class="script-item-name">${esc(item.title||'（タイトルなし）')}</span>
+            <button class="script-del" onclick="event.stopPropagation();deleteSubScript('${key}','${subKey}',${i})">✕</button>
+          </li>`;
+        });
+        h+=`</ul></div>`;
+      });
+    }
+    h+=`</div>`;
+  });
+  document.getElementById('sidebarScroll').innerHTML=h;
+  // Sortable初期化（各スクリプトリストにドラッグ並べ替え）
+  initSortables();
+}
+
+function getList(catKey, subKey){
+  if(subKey && data[catKey].sub && data[catKey].sub[subKey]) return data[catKey].sub[subKey].list;
+  if(!subKey && data[catKey].list) return data[catKey].list;
+  return null;
+}
+
+function initSortables(){
+  if(typeof Sortable === 'undefined') return;
+  const GROUP = 'scripts';
+
+  // スクリプトアイテムの並べ替え
+  document.querySelectorAll('.script-list-ul').forEach(ul=>{
+    if(ul._sortable) ul._sortable.destroy();
+    ul._sortable = Sortable.create(ul, {
+      group: GROUP,
+      handle: '.drag-handle',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      dragClass: 'sortable-drag',
+      onEnd(evt){
+        const li = evt.item;
+        // 移動元
+        const fromCat = li.dataset.cat;
+        const fromSub = li.dataset.sub || null;
+        const fromIdx = evt.oldIndex;
+        // 移動先（別ul の場合はul自体からdata属性を読む）
+        const toUl = evt.to;
+        const toCat = toUl.dataset.cat;
+        const toSub = toUl.dataset.sub || null;
+        const toIdx = evt.newIndex;
+
+        const fromList = getList(fromCat, fromSub);
+        const toList   = getList(toCat,   toSub);
+        if(!fromList || !toList) return;
+
+        // 移動元から取り出し
+        const [moved] = fromList.splice(fromIdx, 1);
+        // 移動先に挿入（移動元と移動先が同じリストの場合も含め正しく動く）
+        toList.splice(toIdx, 0, moved);
+
+        // 選択中インデックス補正
+        if(currentCat===fromCat && currentSubKey===(fromSub||null)){
+          if(currentIdx===fromIdx){
+            // 選択中アイテム自身が移動した
+            currentCat=toCat; currentSubKey=toSub||null; currentIdx=toIdx;
+          } else if(currentIdx > fromIdx){
+            currentIdx--;
+          }
+        }
+        if(fromCat!==toCat || fromSub!==toSub){
+          // 移動先リストのインデックス補正
+          if(currentCat===toCat && currentSubKey===(toSub||null) && currentIdx>=toIdx){
+            currentIdx++;
+          }
+        }
+
+        // data属性を更新（再renderまでの間、DOMのdata属性を正として使う）
+        save();
+        renderSidebar();
+        if(currentIdx!==null){ renderEditor(); renderPreview(); }
+      }
+    });
+  });
+  // ul の data属性をブロックから付与（描画後に確実に設定）
+  document.querySelectorAll('.script-list-ul').forEach(ul=>{
+    const catBlock = ul.closest('.cat-block');
+    const subBlock = ul.closest('.sub-cat-block');
+    if(subBlock){
+      ul.dataset.cat = subBlock.dataset.cat || '';
+      ul.dataset.sub = subBlock.dataset.sub || '';
+    } else if(catBlock){
+      ul.dataset.cat = catBlock.dataset.catKey || '';
+      ul.dataset.sub = '';
+    }
+  });
+}
+
+// =====================================================
+// カテゴリ並べ替え（ネイティブHTML5 D&D）
+// =====================================================
+let _catDragSide=null, _catDragKey=null;
+
+function catDragStart(e, side, catKey){
+  _catDragSide=side; _catDragKey=catKey;
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain', catKey);
+  const block=e.target.closest('.cat-block');
+  if(block) setTimeout(()=>block.classList.add('cat-drag-active'),0);
+}
+
+function catDragEnd(e){
+  document.querySelectorAll('.cat-block.cat-drag-active').forEach(el=>el.classList.remove('cat-drag-active'));
+  document.querySelectorAll('.cat-block.cat-drop-before,.cat-block.cat-drop-after').forEach(el=>{
+    el.classList.remove('cat-drop-before','cat-drop-after');
+  });
+  _catDragSide=null; _catDragKey=null;
+}
+
+// コンテナ委譲：sidebarScroll / mailSidebarScroll から呼ばれる
+function catDragOver(e, side){
+  if(_catDragSide!==side || !_catDragKey) return;
+  const block=e.target.closest('.cat-block');
+  if(!block || block.dataset.catKey===_catDragKey) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('.cat-block.cat-drop-before,.cat-block.cat-drop-after').forEach(el=>{
+    el.classList.remove('cat-drop-before','cat-drop-after');
+  });
+  const rect=block.getBoundingClientRect();
+  block.classList.add((e.clientY-rect.top)<(rect.height/2)?'cat-drop-before':'cat-drop-after');
+}
+
+function catDrop(e, side){
+  e.preventDefault();
+  const fromKey=_catDragKey;
+  if(!fromKey||_catDragSide!==side) return;
+  const block=e.target.closest('.cat-block');
+  const toKey=block?block.dataset.catKey:null;
+  if(!toKey||toKey===fromKey) return;
+
+  const rect=block.getBoundingClientRect();
+  const insertBefore=(e.clientY-rect.top)<(rect.height/2);
+
+  if(side==='script'){
+    const keys=Object.keys(data);
+    const fi=keys.indexOf(fromKey);
+    keys.splice(fi,1);
+    let ti=keys.indexOf(toKey);
+    if(!insertBefore) ti++;
+    keys.splice(ti,0,fromKey);
+    const newData={};
+    keys.forEach(k=>{ newData[k]=data[k]; });
+    Object.keys(data).forEach(k=>delete data[k]);
+    Object.assign(data, newData);
+    save(); renderSidebar();
+    if(currentIdx!==null){ renderEditor(); renderPreview(); }
+  } else {
+    // mailCatMeta.cats の順序を更新
+    initMailCatMeta();
+    const cats=mailCatMeta.cats;
+    const fi=cats.findIndex(c=>c.key===fromKey);
+    if(fi>=0){
+      const [moved]=cats.splice(fi,1);
+      let ti=cats.findIndex(c=>c.key===toKey);
+      if(ti<0) ti=cats.length;
+      else if(!insertBefore) ti++;
+      cats.splice(ti,0,moved);
+      saveMailCatMeta();
+    }
+    // mailData の順序も更新
+    const fromItems=mailData.filter(t=>t.catKey===fromKey);
+    const others=mailData.filter(t=>t.catKey!==fromKey);
+    let ti2=others.findIndex(t=>t.catKey===toKey);
+    if(ti2<0) ti2=others.length;
+    else if(!insertBefore){
+      let last=ti2;
+      while(last<others.length && others[last].catKey===toKey) last++;
+      ti2=last;
+    }
+    others.splice(ti2,0,...fromItems);
+    mailData.length=0; others.forEach(t=>mailData.push(t));
+    saveAll(); renderMailSidebar();
+  }
+}
+
+// =====================================================
+// サブカテゴリ並べ替え（ネイティブHTML5 D&D）
+// スクリプト・メール両側で共用
+// =====================================================
+let _subDragCat=null, _subDragKey=null;
+
+function subDragStart(e, catKey, subKey){
+  _subDragCat=catKey; _subDragKey=subKey;
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain', subKey);
+  // ドラッグ中の元要素を薄くする
+  const block=e.target.closest('.sub-cat-block');
+  if(block) setTimeout(()=>block.classList.add('sub-drag-active'),0);
+}
+
+function subDragEnd(e){
+  document.querySelectorAll('.sub-cat-block.sub-drag-active').forEach(el=>el.classList.remove('sub-drag-active'));
+  document.querySelectorAll('.sub-cat-block.sub-drop-before,.sub-cat-block.sub-drop-after').forEach(el=>{
+    el.classList.remove('sub-drop-before','sub-drop-after');
+  });
+  _subDragCat=null; _subDragKey=null;
+}
+
+// sub-cat-header から呼ばれる（SortableJS の ul より上位）
+function subDragOver(e, catKey, subKey){
+  if(_subDragCat!==catKey || _subDragKey===subKey) return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('.sub-cat-block.sub-drop-before,.sub-cat-block.sub-drop-after').forEach(el=>{
+    el.classList.remove('sub-drop-before','sub-drop-after');
+  });
+  const block=e.currentTarget.closest('.sub-cat-block');
+  if(!block) return;
+  const rect=block.getBoundingClientRect();
+  block.classList.add((e.clientY-rect.top)<(rect.height/4)?'sub-drop-before':'sub-drop-after');
+}
+
+function subDrop(e, catKey, toSubKey){
+  e.preventDefault();
+  e.stopPropagation();
+  const fromKey=_subDragKey;
+  if(!fromKey||fromKey===toSubKey||_subDragCat!==catKey) return;
+
+  const block=e.currentTarget.closest('.sub-cat-block');
+  const rect=block?block.getBoundingClientRect():{top:0,height:0};
+  const insertBefore=(e.clientY-rect.top)<(rect.height/4);
+
+  // キー配列で並べ替え
+  function reorderKeys(keys){
+    const arr=[...keys];
+    const fi=arr.indexOf(fromKey);
+    if(fi<0) return arr;
+    arr.splice(fi,1);
+    let ti=arr.indexOf(toSubKey);
+    if(ti<0) return arr;
+    if(!insertBefore) ti++;
+    arr.splice(ti,0,fromKey);
+    return arr;
+  }
+
+  // スクリプト側
+  if(data[catKey]&&data[catKey].sub){
+    const newKeys=reorderKeys(Object.keys(data[catKey].sub));
+    const oldSub=data[catKey].sub;
+    const newSub={};
+    newKeys.forEach(k=>{ if(oldSub[k]) newSub[k]=oldSub[k]; });
+    data[catKey].sub=newSub;
+    save(); renderSidebar();
+    if(currentIdx!==null){ renderEditor(); renderPreview(); }
+  }
+  // メール側
+  else{
+    const subKeys=getMailSubCats(catKey).map(s=>s.key);
+    const newKeys=reorderKeys(subKeys);
+    const reordered=[];
+    newKeys.forEach(sk=>{
+      mailData.filter(t=>t.catKey===catKey&&t.subCatKey===sk).forEach(t=>reordered.push(t));
+    });
+    mailData.filter(t=>t.catKey===catKey&&!t.subCatKey).forEach(t=>reordered.push(t));
+    const seen=new Set(reordered.map(t=>t.id));
+    const others=mailData.filter(t=>!seen.has(t.id));
+    const insertPos=others.findIndex(t=>t.catKey===catKey);
+    const result=[...others];
+    if(insertPos>=0) result.splice(insertPos,0,...reordered);
+    else result.push(...reordered);
+    mailData.length=0; result.forEach(t=>mailData.push(t));
+    saveAll(); renderMailSidebar();
+  }
+}
+
+function renderEditor(){
+  const cat=data[currentCat];
+  const list=currentSubKey&&cat.sub&&cat.sub[currentSubKey]?cat.sub[currentSubKey].list:cat.list||[];
+  const item=list[currentIdx];
+  const steps=item.steps||[];
+  let sh='';
+  steps.forEach((step,si)=>{
+    const isStart=si===0;
+    const isEnd=!step.choices||step.choices.length===0;
+    const cardCls=isStart?'step-start':(isEnd?'step-end':'');
+    const badge=isStart
+      ?`<span class="step-badge step-badge-start">▶ 開始（ステップ0）</span>`
+      :`<span class="step-badge step-badge-num">ステップ ${si}</span>`;
+    const endBadge=isEnd&&!isStart?`<span class="step-badge step-badge-end" style="font-size:10px">✓ ここで終了</span>`:'';
+    let cho='';
+    if(!isEnd){
+      cho=`<div class="choices-header"><div class="field-label" style="margin:0">選択肢（回答ボタン）</div></div>`;
+      (step.choices||[]).forEach((c,ci)=>{
+        const goVal=c.go;
+        const isJump=typeof goVal==='string'&&goVal.includes('/');
+        let opts='';
+        for(let i=0;i<steps.length;i++) opts+=`<option value="${i}"${!isJump&&goVal===i?' selected':''}>${i===0?'ステップ0（開始）':'ステップ '+i}</option>`;
+        opts+=`<option value="__jump__"${isJump?' selected':''}>↗ 別スクリプトへジャンプ</option>`;
+        // ジャンプ先選択UI
+        let jumpUi='';
+        if(isJump){
+          // catKey選択
+          let catOpts='';
+          Object.entries(data).forEach(([ck,cat])=>{
+            catOpts+=`<option value="${ck}">${esc(cat.name)}</option>`;
+          });
+          // goVal = "catKey/subKey/itemIndex/stepIndex"
+          const parts=String(goVal).split('/');
+          const jCat=parts[0]||''; const jSub=parts[1]||''; const jItem=parts[2]||'0'; const jStep=parts[3]||'0';
+          const jCatData=data[jCat];
+          // subKey選択
+          let subOpts='<option value="">（サブなし）</option>';
+          if(jCatData&&jCatData.sub){Object.entries(jCatData.sub).forEach(([sk,sv])=>{subOpts+=`<option value="${sk}"${jSub===sk?' selected':''}>${esc(sv.name)}</option>`;});}
+          // item選択
+          let itemOpts='';
+          const jList=jCatData?(jSub&&jCatData.sub&&jCatData.sub[jSub]?jCatData.sub[jSub].list:jCatData.list||[]):[];
+          jList.forEach((it,ii)=>{itemOpts+=`<option value="${ii}"${String(ii)===jItem?' selected':''}>${esc(it.title||'（無題）')}</option>`;});
+          // step選択
+          let stepOpts='';
+          const jSteps=jList[parseInt(jItem)]?.steps||[];
+          jSteps.forEach((_,ss)=>{stepOpts+=`<option value="${ss}"${String(ss)===jStep?' selected':''}>ステップ${ss}${ss===0?' (開始)':''}</option>`;});
+          jumpUi=`<div class="jump-config">
+            <select class="jump-sel" onchange="updJumpCat(${si},${ci},this.value)"><option value="">--用途--</option>${catOpts.replace('<option value="'+jCat+'"','<option value="'+jCat+'" selected')}</select>
+            <select class="jump-sel" onchange="updJumpSub(${si},${ci},this.value)">${subOpts}</select>
+            <select class="jump-sel" onchange="updJumpItem(${si},${ci},this.value)"><option value="">--スクリプト--</option>${itemOpts}</select>
+            <select class="jump-sel" onchange="updJumpStep(${si},${ci},this.value)"><option value="">--ステップ--</option>${stepOpts}</select>
+          </div>`;
+        }
+        cho+=`<div class="choice-row">
+          <span class="choice-num">${ci+1}</span>
+          <input class="choice-label-in" type="text" value="${esc(c.label||'')}" placeholder="ボタンの文字（例：はい）" oninput="updCL(${si},${ci},this.value)">
+          <span class="choice-arrow">→</span>
+          <select class="choice-go-sel" onchange="onGoSel(${si},${ci},this.value)">${opts}</select>
+          <button class="btn-icon" onclick="delChoice(${si},${ci})">✕</button>
+        </div>${jumpUi}`;
+      });
+      cho+=`<button class="add-choice-btn" onclick="addChoice(${si})">＋ 選択肢を追加</button>`;
+    } else {
+      cho=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="end-tag">✓ ここで終了</span>
+        <button class="add-choice-btn" style="width:auto;padding:5px 14px" onclick="addChoice(${si})">選択肢を追加して分岐させる</button>
+      </div>`;
+    }
+    sh+=`<div class="step-card ${cardCls}">
+      <div class="step-head">
+        ${badge}${endBadge}
+        <span class="step-head-spacer"></span>
+        ${si>0?`<button class="step-del-btn" onclick="delStep(${si})">🗑 このステップを削除</button>`:''}
+      </div>
+      <div class="step-body">
+        <div class="field-label">トーク内容</div>
+        <div class="fmt-bar">
+          <button class="fmt-btn" type="button" onclick="fmtStep(${si},'bold')" title="太字"><b>B</b> 太字</button>
+          <button class="fmt-btn" type="button" onclick="fmtStep(${si},'red')" title="赤字"><span class="fmt-red">A</span> 赤字</button>
+          <button class="fmt-btn" type="button" onclick="fmtStep(${si},'red-bold')" title="赤太字"><span class="fmt-red"><b>A</b></span> 赤太字</button>
+          <button class="fmt-btn" type="button" onclick="fmtStep(${si},'clear')" title="書式を解除">✕ 解除</button>
+        </div>
+        <div class="ta-wrap"><textarea class="step-text" id="stepTa_${si}" placeholder="オペレーターが話す内容を入力…" oninput="updST(${si},this.value)">${esc(step.text||'')}</textarea><div class="ta-resize-hint"></div></div>
+        ${cho}
+        <details class="memo-details" ${step.memo?'open':''}>
+          <summary class="memo-summary">📝 メモ</summary>
+          <textarea class="step-memo" placeholder="社内メモ（お客様には見えません）" oninput="updMemo(${si},this.value)">${esc(step.memo||'')}</textarea>
+        </details>
+      </div>
+    </div>`;
+  });
+  document.getElementById('editorScroll').innerHTML=`
+    <div class="title-row">
+      <label>スクリプト名</label>
+      <input type="text" value="${esc(item.title||'')}" oninput="updTitle(this.value)" placeholder="スクリプト名を入力">
+    </div>
+    <div id="stepsWrap">${sh}</div>
+    <button class="add-step-btn" onclick="addStep()">＋ ステップを追加</button>`;
+}
+
+function renderPreview(){
+  if(!currentCat||currentIdx===null)return;
+  const cat=data[currentCat];
+  const list=currentSubKey&&cat.sub&&cat.sub[currentSubKey]?cat.sub[currentSubKey].list:cat.list||[];
+  const steps=(list[currentIdx]?.steps||[]);
+  const title=(list[currentIdx]?.title||'');
+  if(!steps.length){
+    document.getElementById('previewScroll').innerHTML='<div style="color:var(--muted);font-size:11px;padding:8px">ステップがありません</div>';
+    return;
+  }
+
+  // テキストからHTMLタグを除去して短縮表示
+  function stripAndTrunc(s,maxLen){
+    const plain=(s||'').replace(/<[^>]+>/g,'');
+    return plain.length>maxLen?plain.slice(0,maxLen)+'…':plain;
+  }
+
+  // ステップカードへスクロール
+  function scrollToStep(si){
+    const cards=document.querySelectorAll('#editorScroll .step-card');
+    if(cards[si]) cards[si].scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  // 全ステップ中の終端ステップ数を計算（サマリ用）
+  const endCount=steps.filter(s=>!s.choices||s.choices.length===0).length;
+  const jumpCount=steps.reduce((a,s)=>a+(s.choices||[]).filter(c=>typeof c.go==='string'&&c.go.includes('/')).length,0);
+
+  let h = '';
+
+  // ── スクリプト概要ヘッダー ──
+  h += `<div style="background:var(--accent-lt);border:1px solid #c5cee8;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:4px;">`;
+  h += `<div style="font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(title)}">${esc(title)||'（タイトルなし）'}</div>`;
+  h += `<div style="display:flex;gap:8px;flex-wrap:wrap;">`;
+  h += `<span style="font-size:10px;color:var(--muted);">📋 ${steps.length}ステップ</span>`;
+  h += `<span style="font-size:10px;color:#27ae60;">✓ 終了${endCount}箇所</span>`;
+  if(jumpCount>0) h+=`<span style="font-size:10px;color:#f4a261;">↗ 外部${jumpCount}件</span>`;
+  h += `</div></div>`;
+
+  // ── フローツリー本体 ──
+  h += `<div class="pv-tree">`;
+
+  steps.forEach((step, si) => {
+    const isStart = si === 0;
+    const isEnd = !step.choices || step.choices.length === 0;
+    const choices = step.choices || [];
+    const dotCls = isStart ? 'pv-dot-start' : isEnd ? 'pv-dot-end' : 'pv-dot-mid';
+    const stepNumLabel = isStart ? '▶ 開始' : isEnd ? `S${si} ✓` : `S${si}`;
+    const previewText = stripAndTrunc(step.text, 28);
+    const isLast = si === steps.length - 1;
+    const hasMemo = !!step.memo;
+    // 背景色（開始・終了・通常）
+    const nodeRowBg = isStart ? 'background:rgba(67,97,238,.06);' : isEnd ? 'background:rgba(46,196,182,.06);' : '';
+
+    h += `<div class="pv-tree-node"${isLast?' style="padding-bottom:6px"':''}>`;
+    // ステップ行：クリックでエディタへスクロール
+    h += `<div class="pv-tree-row" onclick="(function(){var c=document.querySelectorAll('#editorScroll .step-card');if(c[${si}])c[${si}].scrollIntoView({behavior:'smooth',block:'start'});})()" style="cursor:pointer;border-radius:5px;padding:1px 4px;transition:background .1s;${nodeRowBg}" title="クリックしてエディタへジャンプ">`;
+    h += `<span class="pv-dot ${dotCls}"></span>`;
+    h += `<div style="flex:1;min-width:0;">`;
+    h += `<div style="display:flex;align-items:center;gap:4px;">`;
+    h += `<span class="pv-tree-num" style="font-size:10px;flex-shrink:0;">${stepNumLabel}</span>`;
+    if(hasMemo) h+=`<span style="font-size:9px;color:#f4a261;" title="メモあり">📝</span>`;
+    h += `</div>`;
+    if(previewText) h+=`<div class="pv-tree-label" style="max-width:170px;">${esc(previewText)}</div>`;
+    h += `</div></div>`; // close row
+
+    // ── 選択肢ブランチ ──
+    if(choices.length > 0){
+      h += `<div class="pv-branches">`;
+      choices.forEach((c, ci) => {
+        const isJump = typeof c.go === 'string' && c.go.includes('/');
+        const goNum = isJump ? null : parseInt(c.go);
+        const targetIsEnd = !isJump && steps[goNum] && (!steps[goNum].choices || steps[goNum].choices.length === 0);
+        const isLoopBack = !isJump && goNum !== null && goNum <= si;
+        const label = c.label || `選択肢${ci+1}`;
+
+        let destLabel = '';
+        let destColor = 'var(--muted)';
+        let branchDotCls = 'pv-branch-dot';
+        if(isJump){
+          const parts = String(c.go).split('/');
+          const jCatData = data[parts[0]];
+          const jCatName = jCatData ? (jCatData.name||parts[0]) : parts[0];
+          destLabel = `↗ ${jCatName}`;
+          destColor = '#f4a261';
+          branchDotCls = 'pv-branch-dot';
+        } else if(targetIsEnd){
+          destLabel = `→S${goNum}（終了）`;
+          destColor = '#27ae60';
+          branchDotCls = 'pv-branch-dot-end';
+        } else if(isLoopBack){
+          destLabel = `↩S${goNum}`;
+          destColor = '#9b5de5';
+        } else {
+          destLabel = `→S${goNum}`;
+          destColor = 'var(--muted)';
+        }
+
+        h += `<div class="pv-branch" style="align-items:flex-start;height:auto;min-height:22px;padding:2px 0;">`;
+        h += `<span class="pv-branch-dot ${branchDotCls}" style="margin-top:5px;flex-shrink:0;"></span>`;
+        h += `<div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1;">`;
+        h += `<span class="pv-branch-label" style="max-width:130px;" title="${esc(label)}">${esc(label)}</span>`;
+        h += `<span style="font-size:9px;font-weight:700;color:${destColor};flex-shrink:0;">${esc(destLabel)}</span>`;
+        h += `</div></div>`;
+      });
+      h += `</div>`; // close pv-branches
+    } else if(!isEnd){
+      // 選択肢なしの中間ステップ（異常状態）
+      h += `<div style="padding-left:20px;font-size:9px;color:#e63946;">⚠ 選択肢なし</div>`;
+    }
+
+    h += `</div>`; // close pv-tree-node
+  });
+
+  h += `</div>`; // close pv-tree
+
+  // ── 凡例 ──
+  h += `<div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:4px;">`;
+  h += `<div style="font-size:9px;font-weight:700;color:var(--muted);margin-bottom:3px;">凡例</div>`;
+  h += `<div style="display:flex;align-items:center;gap:5px"><span class="pv-dot pv-dot-start" style="width:10px;height:10px"></span><span style="font-size:9px;color:var(--text)">開始ステップ</span></div>`;
+  h += `<div style="display:flex;align-items:center;gap:5px"><span class="pv-dot pv-dot-mid" style="width:10px;height:10px"></span><span style="font-size:9px;color:var(--text)">中間ステップ</span></div>`;
+  h += `<div style="display:flex;align-items:center;gap:5px"><span class="pv-dot pv-dot-end" style="width:10px;height:10px"></span><span style="font-size:9px;color:var(--text)">終了ステップ</span></div>`;
+  h += `<div style="display:flex;align-items:center;gap:5px"><span class="pv-branch-dot" style="width:8px;height:8px"></span><span style="font-size:9px;color:var(--text)">次ステップへ</span></div>`;
+  h += `<div style="display:flex;align-items:center;gap:5px"><span class="pv-branch-dot pv-branch-dot-end" style="width:8px;height:8px"></span><span style="font-size:9px;color:var(--text)">終了へ</span></div>`;
+  h += `<div style="display:flex;align-items:center;gap:5px"><span style="font-size:10px;color:#9b5de5;font-weight:700;">↩</span><span style="font-size:9px;color:var(--text)">前に戻る</span></div>`;
+  h += `<div style="display:flex;align-items:center;gap:5px"><span style="font-size:10px;color:#f4a261;font-weight:700;">↗</span><span style="font-size:9px;color:var(--text)">外部ジャンプ</span></div>`;
+  h += `<div style="font-size:9px;color:var(--muted);margin-top:4px;">💡 ステップ名をクリックで<br>エディタへジャンプ</div>`;
+  h += `</div>`;
+
+  document.getElementById('previewScroll').innerHTML = h;
+}
+
+function selectScript(k,i){currentCat=k;currentSubKey=null;currentIdx=i;renderSidebar();renderEditor();renderPreview();}
+function selectSubScript(k,subKey,i){currentCat=k;currentSubKey=subKey;currentIdx=i;renderSidebar();renderEditor();renderPreview();}
+
+function addSubCat(catKey){
+  if(!data[catKey].sub)data[catKey].sub={};
+  const subKey='sub_'+Date.now();
+  data[catKey].sub[subKey]={name:'新しいサブカテゴリ',list:[]};
+  save();
+  renderSidebar();   // editor/previewはそのまま維持
+  initSortables();
+  // 新しいサブカテゴリ名入力欄にフォーカス
+  setTimeout(()=>{
+    const inputs=document.querySelectorAll('.sub-cat-header .cat-name-input');
+    if(inputs.length) inputs[inputs.length-1].focus();
+  },80);
+}
+function renameSubCat(catKey,subKey,v){data[catKey].sub[subKey].name=v;save();}
+function deleteSubCat(catKey,subKey){
+  if(!confirm('このサブカテゴリを削除しますか？'))return;
+  delete data[catKey].sub[subKey];
+  if(currentCat===catKey&&currentSubKey===subKey){currentSubKey=null;currentIdx=null;showEmpty();}
+  save();renderSidebar();initSortables();
+}
+function addSubScript(catKey,subKey){
+  if(!data[catKey].sub[subKey].list)data[catKey].sub[subKey].list=[];
+  data[catKey].sub[subKey].list.push({title:'新しいスクリプト',steps:[{text:'',choices:[]}]});
+  currentCat=catKey; currentSubKey=subKey;
+  currentIdx=data[catKey].sub[subKey].list.length-1;
+  save();
+  render();  // renderSidebar + renderEditor + renderPreview を一括更新
+  setTimeout(()=>{const inp=document.querySelector('#editorScroll .title-row input');if(inp){inp.focus();inp.select();}},60);
+}
+function deleteSubScript(catKey,subKey,idx){
+  data[catKey].sub[subKey].list.splice(idx,1);
+  if(currentCat===catKey&&currentSubKey===subKey){
+    if(currentIdx===idx){currentIdx=null;showEmpty();}
+    else if(currentIdx>idx)currentIdx--;
+  }
+  save();render();
+}
+function addScript(catKey){
+  if(!data[catKey].list)data[catKey].list=[];
+  data[catKey].list.push({title:'新しいスクリプト',steps:[{text:'',choices:[]}]});
+  selectScript(catKey,data[catKey].list.length-1);
+  setTimeout(()=>{const inp=document.querySelector('#editorScroll .title-row input');if(inp){inp.focus();inp.select();}},60);
+}
+
+function deleteScript(catKey,idx){
+  const name=data[catKey].list[idx].title;
+  if(!confirm(`「${name}」を削除しますか？`))return;
+  data[catKey].list.splice(idx,1);
+  if(currentCat===catKey){if(currentIdx===idx){currentCat=null;currentIdx=null;showEmpty();}else if(currentIdx>idx)currentIdx--;}
+  renderSidebar();
+}
+
+function renameCat(key,val){data[key].name=val;save();}
+
+function deleteCat(key){
+  const name=data[key].name;
+  const count=(data[key].list||[]).length;
+  const msg=count>0?`「${name}」にはスクリプトが${count}件あります。\nカテゴリごと削除しますか？`:`「${name}」を削除しますか？`;
+  if(!confirm(msg))return;
+  delete data[key];
+  if(currentCat===key){currentCat=null;currentIdx=null;showEmpty();}
+  render();toast(`🗑 「${name}」を削除しました`);
+}
+
+function openAddCat(){document.getElementById('newCatName').value='';document.getElementById('modalCat').classList.add('open');setTimeout(()=>document.getElementById('newCatName').focus(),100);}
+function closeModal(){document.getElementById('modalCat').classList.remove('open');}
+document.getElementById('newCatName').addEventListener('keydown',e=>{if(e.key==='Enter')addCategory();if(e.key==='Escape')closeModal();});
+
+function addCategory(){
+  const name=document.getElementById('newCatName').value.trim();
+  if(!name){toast('⚠️ カテゴリ名を入力してください');return;}
+  const key='cat_'+Date.now();
+  const ci=Object.keys(data).length%CAT_COLORS.length;
+  data[key]={name,color:CAT_COLORS[ci],list:[]};
+  save();closeModal();render();toast(`✅ 「${name}」を追加しました`);
+}
+
+function getEditItem(){
+  const cat=data[currentCat];
+  const list=currentSubKey&&cat.sub&&cat.sub[currentSubKey]?cat.sub[currentSubKey].list:cat.list||[];
+  return list[currentIdx];
+}
+function updTitle(v){getEditItem().title=v;save();renderSidebar();renderPreview();}
+function updST(si,v){getEditItem().steps[si].text=v;save();renderPreview();}
+
+// 書式適用（選択範囲をタグで囲む）
+function fmtStep(si, type) {
+  const ta = document.getElementById('stepTa_' + si);
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const val = ta.value;
+  const sel = val.slice(start, end);
+  if (!sel && type !== 'clear') return; // 選択なしは何もしない
+  let wrapped = sel;
+  if (type === 'bold')     wrapped = '<b>' + sel + '</b>';
+  if (type === 'red')      wrapped = '<span style="color:#e63946">' + sel + '</span>';
+  if (type === 'red-bold') wrapped = '<span style="color:#e63946"><b>' + sel + '</b></span>';
+  if (type === 'clear') {
+    // HTMLタグを除去
+    wrapped = sel.replace(/<[^>]+>/g, '');
+  }
+  const newVal = val.slice(0, start) + wrapped + val.slice(end);
+  ta.value = newVal;
+  getEditItem().steps[si].text = newVal;
+  save();
+  renderPreview();
+  // カーソル位置を調整
+  const newEnd = start + wrapped.length;
+  ta.setSelectionRange(newEnd, newEnd);
+  ta.focus();
+}
+function addStep(){
+  getEditItem().steps.push({text:'',choices:[]});
+  save();renderEditor();renderPreview();
+  setTimeout(()=>{const c=document.querySelectorAll('#editorScroll .step-card');if(c.length)c[c.length-1].scrollIntoView({behavior:'smooth',block:'start'});},60);
+}
+function delStep(si){
+  if(!confirm(`ステップ${si}を削除しますか？\n※このステップへのリンクも確認してください`))return;
+  const steps=getEditItem().steps;
+  steps.splice(si,1);
+  steps.forEach(s=>{if(s.choices)s.choices.forEach(c=>{if(c.go>=si)c.go=Math.max(0,c.go-1);});});
+  save();renderEditor();renderPreview();
+}
+function addChoice(si){
+  const steps=getEditItem().steps;
+  if(!steps[si].choices)steps[si].choices=[];
+  steps[si].choices.push({label:'',go:Math.min(si+1,steps.length-1)});
+  save();renderEditor();renderPreview();
+}
+function delChoice(si,ci){getEditItem().steps[si].choices.splice(ci,1);save();renderEditor();renderPreview();}
+function updCL(si,ci,v){getEditItem().steps[si].choices[ci].label=v;save();renderPreview();}
+function updCG(si,ci,v){getEditItem().steps[si].choices[ci].go=v;save();renderPreview();}
+function updMemo(si,v){const item=getEditItem();if(!item.steps[si])return;item.steps[si].memo=v;save();}
+function onGoSel(si,ci,v){
+  if(v==='__jump__'){
+    // 最初の用途/サブ/スクリプト/ステップをデフォルト
+    const firstCat=Object.keys(data)[0]||'';
+    getEditItem().steps[si].choices[ci].go=firstCat+'//0/0';
+  } else {
+    getEditItem().steps[si].choices[ci].go=parseInt(v);
+  }
+  save();renderEditor();renderPreview();
+}
+function getJumpParts(si,ci){
+  const v=String(getEditItem().steps[si].choices[ci].go);
+  const p=v.split('/');
+  return {cat:p[0]||'',sub:p[1]||'',item:p[2]||'0',step:p[3]||'0'};
+}
+function setJump(si,ci,cat,sub,item,step){
+  getEditItem().steps[si].choices[ci].go=`${cat}/${sub}/${item}/${step}`;
+  save();renderEditor();renderPreview();
+}
+function updJumpCat(si,ci,v){
+  const p=getJumpParts(si,ci);
+  setJump(si,ci,v,'','0','0');
+}
+function updJumpSub(si,ci,v){
+  const p=getJumpParts(si,ci);
+  setJump(si,ci,p.cat,v,'0','0');
+}
+function updJumpItem(si,ci,v){
+  const p=getJumpParts(si,ci);
+  setJump(si,ci,p.cat,p.sub,v,'0');
+}
+function updJumpStep(si,ci,v){
+  const p=getJumpParts(si,ci);
+  setJump(si,ci,p.cat,p.sub,p.item,v);
+}
+
+function triggerImport(){document.getElementById('importFile').click();}
+
+function importJSON(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const raw=JSON.parse(e.target.result);
+      // 統合JSON か旧形式かを判定
+      let impScripts=null, impMail=null, impHistory=null, impScreen=null;
+      if((raw.version===2||raw.version===1) && raw.talkScripts && raw.mailTemplates){
+        impScripts=raw.talkScripts;
+        impMail=raw.mailTemplates;
+        impHistory=Array.isArray(raw.updateHistory)?raw.updateHistory:null;
+        // version:2 から画面遷移データを取得
+        if(raw.version===2 && Array.isArray(raw.screenData)) impScreen=raw.screenData;
+      } else if(Object.keys(raw).every(k=>raw[k].name&&Array.isArray(raw[k].list))){
+        impScripts=raw; impMail=null;
+      } else if(Array.isArray(raw)){
+        impScripts=null; impMail=raw;
+      } else {
+        toast('❌ ファイルの形式が正しくありません');return;
+      }
+      openImportDialog(impScripts, impMail, impHistory, impScreen);
+    }catch(err){
+      toast('❌ 読み込みに失敗しました: '+err.message);
+    }
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+
+// ===== インポートダイアログ（重複チェック付き） =====
+function openImportDialog(impScripts, impMail, impHistory, impScreen){
+  const conflicts=[];
+
+  // トークスクリプト重複チェック
+  if(impScripts){
+    Object.entries(impScripts).forEach(([catKey,impCat])=>{
+      const cur=data[catKey];
+      if(!cur){
+        // カテゴリ丸ごと新規 → 自動マージ
+        return;
+      }
+      (impCat.list||[]).forEach((impItem,ii)=>{
+        const curItem=cur.list.find(c=>c.title===impItem.title);
+        if(!curItem){return;} // 新規スクリプト → 自動追加
+        const isSame=JSON.stringify(curItem)===JSON.stringify(impItem);
+        if(!isSame){
+          conflicts.push({
+            type:'script',catKey,catName:impCat.name||catKey,
+            title:impItem.title,
+            current:curItem, incoming:impItem,
+            ii
+          });
+        }
+        // 完全一致はスキップ
+      });
+    });
+  }
+
+  // メールテンプレート重複チェック
+  if(impMail){
+    (impMail||[]).forEach(impT=>{
+      const curT=mailData.find(c=>c.id===impT.id);
+      if(!curT){return;}
+      const isSame=JSON.stringify(curT)===JSON.stringify(impT);
+      if(!isSame){
+        conflicts.push({
+          type:'mail',id:impT.id,
+          title:impT.title||'(タイトルなし)',
+          current:curT, incoming:impT
+        });
+      }
+    });
+  }
+
+  if(conflicts.length===0){
+    // 競合なし → そのままマージ
+    applyImport(impScripts, impMail, {}, [], impHistory);
+    return;
+  }
+
+  // 競合あり → 選択ダイアログ表示
+  showConflictDialog(conflicts, impScripts, impMail, impHistory);
+}
+
+function showConflictDialog(conflicts, impScripts, impMail, impHistory){
+  const overlay=document.createElement('div');
+  overlay.id='importOverlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center;';
+
+  let rows='';
+  conflicts.forEach((c,i)=>{
+    const curPrev=c.type==='script'
+      ? (c.current.steps&&c.current.steps[0]?c.current.steps[0].text||'':'').slice(0,60)
+      : (c.current.body||'').replace(/\n/g,' ').slice(0,60);
+    const impPrev=c.type==='script'
+      ? (c.incoming.steps&&c.incoming.steps[0]?c.incoming.steps[0].text||'':'').slice(0,60)
+      : (c.incoming.body||'').replace(/\n/g,' ').slice(0,60);
+    rows+=`<tr>
+      <td style="padding:8px;font-size:12px;font-weight:700;">${c.title}</td>
+      <td style="padding:8px;font-size:11px;color:#666;">${escD(curPrev)}${curPrev.length>=60?'…':''}</td>
+      <td style="padding:8px;font-size:11px;color:#666;">${escD(impPrev)}${impPrev.length>=60?'…':''}</td>
+      <td style="padding:8px;text-align:center;">
+        <label style="cursor:pointer;"><input type="radio" name="cf${i}" value="current" checked> 現在</label>
+        <label style="cursor:pointer;margin-left:10px;"><input type="radio" name="cf${i}" value="incoming"> インポート</label>
+      </td>
+    </tr>`;
+  });
+
+  overlay.innerHTML=`<div style="background:white;border-radius:12px;width:860px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:16px 20px;border-bottom:1px solid #e4e6ed;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:15px;font-weight:700;">⚠️ 部分重複が見つかりました（${conflicts.length}件）</div>
+      <button onclick="document.getElementById('importOverlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;">✕</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:16px;">
+      <p style="font-size:12px;color:#666;margin-bottom:12px;">以下の項目について、どちらを採用するか選択してください。完全重複は自動的に統合されます。</p>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:#f5f6fa;">
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e4e6ed;">タイトル</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e4e6ed;">現在の内容</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e4e6ed;">インポートの内容</th>
+          <th style="padding:8px;text-align:center;border-bottom:2px solid #e4e6ed;">採用</th>
+        </tr></thead>
+        <tbody id="conflictRows">${rows}</tbody>
+      </table>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid #e4e6ed;display:flex;justify-content:flex-end;gap:10px;">
+      <button onclick="document.getElementById('importOverlay').remove()" style="height:36px;padding:0 16px;border:1px solid #ddd;border-radius:7px;background:white;cursor:pointer;font-size:13px;">キャンセル</button>
+      <button onclick="resolveImport(${JSON.stringify(conflicts).replace(/"/g,'&quot;')})" style="height:36px;padding:0 16px;background:#4361ee;color:white;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700;">インポート実行</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  // resolveImport をグローバルに
+  window._importState={conflicts,impScripts,impMail,impHistory};
+}
+
+function resolveImport(conflicts){
+  const choices={};
+  conflicts.forEach((c,i)=>{
+    const sel=document.querySelector('input[name="cf'+i+'"]:checked');
+    choices[i]=sel?sel.value:'current';
+  });
+  const {impScripts,impMail,impHistory}=window._importState||{};
+  document.getElementById('importOverlay').remove();
+  applyImport(impScripts,impMail,choices,conflicts,impHistory);
+}
+
+function applyImport(impScripts,impMail,choices,conflicts,impHistory){
+  conflicts=conflicts||[];
+
+  if(impScripts){
+    // 競合リストをキーで引く
+    const conflictMap={};
+    conflicts.forEach((c,i)=>{ if(c.type==='script') conflictMap[c.catKey+'__'+c.title]=choices[i]||'current'; });
+
+    Object.entries(impScripts).forEach(([catKey,impCat])=>{
+      if(!data[catKey]){
+        // 新規カテゴリごと追加
+        data[catKey]=JSON.parse(JSON.stringify(impCat));
+        return;
+      }
+      (impCat.list||[]).forEach(impItem=>{
+        const k=catKey+'__'+impItem.title;
+        const curIdx=data[catKey].list.findIndex(c=>c.title===impItem.title);
+        if(curIdx===-1){
+          data[catKey].list.push(JSON.parse(JSON.stringify(impItem)));
+        } else {
+          if(conflictMap[k]==='incoming'){
+            data[catKey].list[curIdx]=JSON.parse(JSON.stringify(impItem));
+          }
+          // 'current' or 完全一致 → そのまま
+        }
+      });
+    });
+    ensureColors();
+    currentCat=null;currentIdx=null;
+    save();
+    render();showEmpty();
+  }
+
+  if(impMail){
+    const mailConflictMap={};
+    conflicts.forEach((c,i)=>{ if(c.type==='mail') mailConflictMap[c.id]=choices[i]||'current'; });
+
+    (impMail||[]).forEach(impT=>{
+      const idx=mailData.findIndex(m=>m.id===impT.id);
+      if(idx===-1){
+        mailData.push(JSON.parse(JSON.stringify(impT)));
+      } else {
+        if(mailConflictMap[impT.id]==='incoming'){
+          mailData[idx]=JSON.parse(JSON.stringify(impT));
+        }
+      }
+    });
+    // mailCatMetaを再構築してサイドバーを即時更新
+    mailCatMeta = null;
+    initMailCatMeta();
+    saveAll();
+    renderMailSidebar();
+    if(mId && !mailData.find(t=>t.id===mId)){ mId=null; showMailEmpty(); }
+  }
+
+  // 更新履歴をマージ（インポート側を優先しつつ、現在の履歴にないIDのみ追加）
+  if(Array.isArray(impHistory) && impHistory.length > 0){
+    const cur=loadHistory();
+    const curIds=new Set(cur.map(h=>h.id));
+    const merged=[...cur];
+    // インポート側の新規エントリを先頭に追加（より新しいものが上に来るよう）
+    impHistory.forEach(h=>{
+      if(!curIds.has(h.id)) merged.unshift(h);
+    });
+    // 日付降順でソート（date フィールドで比較）
+    merged.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    _saveHistory(merged);
+    // サイドメニュー側も即時更新
+    if(window.renderHistory) window.renderHistory();
+    renderAdminHistoryPanel();
+  }
+
+
+  // 画面遷移データをインポート
+  if(Array.isArray(impScreen) && impScreen.length > 0){
+    if(typeof screenEditorPatterns !== 'undefined'){
+      screenPatterns = impScreen;
+    }
+    localStorage.setItem('screenFlowData', JSON.stringify(impScreen));
+    // 画面遷移タブが開いていたら再マウント
+    if(document.getElementById('tabScreen').classList.contains('active')){ _scrInit=false; initScreenEditor(); }
+  }
+
+  toast('✅ インポートしました（「保存して反映」で本番反映）');
+}
+
+function escD(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// save() は talkScripts のみ保存するショートカット
+// ★ 自動保存削除：データはメモリ内のみ。保存は saveAllManual() ボタンのみ
+let _dirty = false;
+function markDirty(){
+  if(_dirty) return;
+  _dirty = true;
+  const ind = document.getElementById('dirtyIndicator');
+  if(ind) ind.style.display = 'inline-flex';
+  const btn = document.querySelector('.btn-primary');
+  if(btn) btn.classList.add('btn-unsaved');
+}
+function markClean(){
+  _dirty = false;
+  const ind = document.getElementById('dirtyIndicator');
+  if(ind) ind.style.display = 'none';
+  const btn = document.querySelector('.btn-primary');
+  if(btn) btn.classList.remove('btn-unsaved');
+}
+function save(){
+  markDirty();
+}
+
+// 自動保存削除 - データはメモリ内でのみ保持
+function saveAll(){
+  markDirty();
+}
+// 手動保存（「保存して反映」ボタン押下時のみ toast 表示）
+var _bc=(function(){try{return new BroadcastChannel('tool_data_update');}catch(e){return null;}})();
+function _notifyTabs(){
+  if(_bc){try{_bc.postMessage({type:'mailDataUpdated',ts:Date.now()});}catch(e){}}
+  try{localStorage.setItem('_mailSaveTs',Date.now().toString());}catch(e){}
+}
+function saveAllManual(){
+  try{
+    localStorage.setItem('talkScripts',JSON.stringify(data));
+    localStorage.setItem('mailTemplates',JSON.stringify(mailData));
+    if(mailCatMeta) localStorage.setItem('mailCatMeta',JSON.stringify(mailCatMeta));
+    // 画面遷移データを保存（screenEditorPatterns が存在する場合）
+    if(typeof screenPatterns !== 'undefined' && screenPatterns && screenPatterns.length){
+      localStorage.setItem('screenFlowData',JSON.stringify(screenPatterns));
+    }
+    _notifyTabs();
+    markClean();
+    toast('✅ 保存しました。本番画面に反映されます。');
+  }catch(e){toast('❌ 保存失敗: '+e.message);}
+}
+function exportJSON(){
+  // 画面遷移データを取得（エディタが起動済みなら変数から、未起動ならlocalStorageから）
+  let screenData = [];
+  if(typeof screenPatterns !== 'undefined' && screenPatterns && screenPatterns.length){
+    screenData = screenPatterns;
+  } else {
+    try{ const s=localStorage.getItem('screenFlowData'); if(s) screenData=JSON.parse(s); }catch(e){}
+  }
+  const combined={
+    version:2,
+    exportedAt:new Date().toISOString(),
+    talkScripts:data,
+    mailTemplates:mailData,
+    screenData:screenData,
+    updateHistory:loadHistory()
+  };
+  const blob=new Blob([JSON.stringify(combined,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  toast('📥 エクスポートしました（スクリプト＋メール＋画面遷移＋更新履歴）');
+}
+
+// =====================================================
+// メールテンプレート管理
+// =====================================================
+const MAIL_COLORS=['#4361ee','#2ec4b6','#e63946','#f4a261','#9b5de5','#f15bb5','#06d6a0'];
+
+let mailData=(function(){
+  try{const s=localStorage.getItem('mailTemplates');return s?JSON.parse(s):[];}catch(e){return [];}
+})();
+
+let mId=null;
+let _pendingMailSubCatKey=null;
+
+// =====================================================
+// メールカテゴリ・サブカテゴリのメタデータ管理
+// mailData（テンプレート配列）から抽出 + 独立メタストア
+// =====================================================
+let mailCatMeta = (function(){
+  try{const s=localStorage.getItem('mailCatMeta');return s?JSON.parse(s):null;}catch(e){return null;}
+})();
+
+function saveMailCatMeta(){
+  // 自動保存削除 - saveAllManual() のみが localStorage に書き込む
+}
+
+// 初回マイグレーション：mailDataからcatMetaを構築
+function initMailCatMeta(){
+  // mailCatMetaが存在してもcats[]が空でmailDataにデータがある場合も再構築する
+  const needsMigrate = !mailCatMeta ||
+    (Array.isArray(mailCatMeta.cats) && mailCatMeta.cats.length === 0 && mailData.length > 0);
+  if(!needsMigrate) return;
+  mailCatMeta={cats:[],subs:{}};
+  const seen=new Set();
+  mailData.forEach(t=>{
+    if(t.catKey && !seen.has(t.catKey)){
+      seen.add(t.catKey);
+      mailCatMeta.cats.push({key:t.catKey,name:t.category||'',color:t.catColor||MAIL_COLORS[0]});
+    }
+    if(t.catKey && t.subCatKey){
+      if(!mailCatMeta.subs[t.catKey]) mailCatMeta.subs[t.catKey]=[];
+      const subSeen=mailCatMeta.subs[t.catKey].some(s=>s.key===t.subCatKey);
+      if(!subSeen) mailCatMeta.subs[t.catKey].push({key:t.subCatKey,name:t.subCategory||''});
+    }
+  });
+  saveMailCatMeta();
+}
+
+function getMailCats(){
+  initMailCatMeta();
+  return mailCatMeta.cats||[];
+}
+
+function getMailSubCats(catKey){
+  initMailCatMeta();
+  return (mailCatMeta.subs&&mailCatMeta.subs[catKey])||[];
+}
+
+function renameMailCatMeta(catKey,name){
+  initMailCatMeta();
+  const cat=mailCatMeta.cats.find(c=>c.key===catKey);
+  if(cat){cat.name=name;saveMailCatMeta();}
+  // mailDataも更新
+  mailData.filter(t=>t.catKey===catKey).forEach(t=>t.category=name);
+}
+
+function renameMailSubCatMeta(catKey,subKey,name){
+  initMailCatMeta();
+  const subs=mailCatMeta.subs[catKey]||[];
+  const sub=subs.find(s=>s.key===subKey);
+  if(sub){sub.name=name;saveMailCatMeta();}
+  mailData.filter(t=>t.catKey===catKey&&t.subCatKey===subKey).forEach(t=>t.subCategory=name);
+}
+
+function renderMailSidebar(){
+  const cats=getMailCats();
+  let h='';
+  if(cats.length===0){
+    h='<div style="padding:16px;font-size:12px;color:var(--muted);text-align:center">カテゴリを追加してください</div>';
+  }
+  cats.forEach(cat=>{
+    h+=`<div class="cat-block" data-cat-key="${cat.key}">
+      <div class="cat-header">
+        <span class="cat-drag-handle" draggable="true"
+          ondragstart="catDragStart(event,'mail','${cat.key}')"
+          ondragend="catDragEnd(event)"
+          title="ドラッグして並べ替え">⠿</span>
+        <div class="cat-color" style="background:${cat.color}"></div>
+        <input class="cat-name-input" value="${esc(cat.name)}" oninput="renameMailCat('${cat.key}',this.value)" onblur="setTimeout(()=>renderMailSidebar(),120)" title="クリックして編集">
+        <div class="cat-actions">
+          <button class="cat-add-btn" onclick="openAddMailSubCat('${cat.key}')" title="サブカテゴリを追加" style="font-size:11px;padding:2px 6px">＋サブ</button>
+          <button class="cat-add-btn" onclick="addMailTemplate('${cat.key}',null)" title="テンプレートを追加">＋</button>
+          <button class="cat-del-btn" onclick="deleteMailCat('${cat.key}')" title="削除">🗑</button>
+        </div>
+      </div>`;
+
+    // 直下アイテム（サブカテゴリなし）を先に表示
+    h+=`<ul class="mail-list-ul" data-cat="${cat.key}" data-sub="">`;
+    mailData.filter(t=>t.catKey===cat.key&&!t.subCatKey).forEach(t=>{
+      const active=mId===t.id;
+      h+=`<li class="script-item${active?' active':''}" data-mail-id="${t.id}" onclick="selectMailTemplate('${t.id}')">
+        <span class="drag-handle" title="ドラッグして並べ替え">⠿</span>
+        <div class="script-item-dot"></div>
+        <span class="script-item-name">${esc(t.title||'（タイトルなし）')}</span>
+        <button class="script-del" onclick="event.stopPropagation();deleteMailTemplate('${t.id}')">✕</button>
+      </li>`;
+    });
+    h+=`</ul>`;
+
+    // サブカテゴリを後に表示（D&Dはsub-cat-headerのみ対象）
+    getMailSubCats(cat.key).forEach(sub=>{
+      h+=`<div class="sub-cat-block" data-cat="${cat.key}" data-sub="${sub.key}">
+        <div class="sub-cat-header"
+          ondragover="subDragOver(event,'${cat.key}','${sub.key}')"
+          ondrop="subDrop(event,'${cat.key}','${sub.key}')">
+          <span class="sub-drag-handle" draggable="true"
+            ondragstart="subDragStart(event,'${cat.key}','${sub.key}')"
+            ondragend="subDragEnd(event)"
+            title="ドラッグして並べ替え">⠿</span>
+          <input class="cat-name-input" value="${esc(sub.name)}" oninput="renameMailSubCat('${cat.key}','${sub.key}',this.value)" onblur="setTimeout(()=>renderMailSidebar(),120)" style="font-size:11px;color:var(--text)">
+          <button class="cat-add-btn" onclick="addMailTemplate('${cat.key}','${sub.key}')" title="テンプレートを追加">＋</button>
+          <button class="cat-del-btn" onclick="deleteMailSubCat('${cat.key}','${sub.key}')" title="削除">🗑</button>
+        </div>
+        <ul class="mail-list-ul" data-cat="${cat.key}" data-sub="${sub.key}">`;
+      mailData.filter(t=>t.catKey===cat.key&&t.subCatKey===sub.key).forEach(t=>{
+        const active=mId===t.id;
+        h+=`<li class="script-item${active?' active':''}" data-mail-id="${t.id}" onclick="selectMailTemplate('${t.id}')">
+          <span class="drag-handle" title="ドラッグして並べ替え">⠿</span>
+          <div class="script-item-dot"></div>
+          <span class="script-item-name">${esc(t.title||'（タイトルなし）')}</span>
+          <button class="script-del" onclick="event.stopPropagation();deleteMailTemplate('${t.id}')">✕</button>
+        </li>`;
+      });
+      h+=`</ul></div>`;
+    });
+    h+=`</div>`;
+  });
+  document.getElementById('mailSidebarScroll').innerHTML=h;
+  initMailSortables();
+}
+
+function initMailSortables(){
+  if(typeof Sortable==='undefined') return;
+
+  // テンプレートアイテムの並べ替え
+  document.querySelectorAll('.mail-list-ul').forEach(ul=>{
+    if(ul._sortable) ul._sortable.destroy();
+    ul._sortable=Sortable.create(ul,{
+      group:'mailTemplates',
+      handle:'.drag-handle:not(.sub-drag-handle)',
+      animation:150,
+      ghostClass:'sortable-ghost',
+      dragClass:'sortable-drag',
+      onEnd(evt){
+        const li=evt.item;
+        const movedId=li.dataset.mailId;
+        const toUl=evt.to;
+        const toCat=toUl.dataset.cat;
+        const toSub=toUl.dataset.sub||null;
+
+        const idx=mailData.findIndex(t=>t.id===movedId);
+        if(idx===-1) return;
+        const [moved]=mailData.splice(idx,1);
+
+        const cat=getMailCats().find(c=>c.key===toCat);
+        const sub=toSub?getMailSubCats(toCat).find(s=>s.key===toSub):null;
+        moved.catKey=toCat;
+        moved.category=cat?cat.name:moved.category;
+        moved.catColor=cat?cat.color:moved.catColor;
+        moved.subCatKey=toSub||null;
+        moved.subCategory=sub?sub.name:'';
+
+        const siblings=mailData.filter(t=>t.catKey===toCat&&(toSub?t.subCatKey===toSub:!t.subCatKey));
+        const beforeItem=siblings[evt.newIndex];
+        const insertAt=beforeItem?mailData.findIndex(t=>t.id===beforeItem.id):mailData.length;
+        mailData.splice(insertAt,0,moved);
+
+        saveAll();
+        renderMailSidebar();
+        if(mId===movedId) renderMailEditor();
+      }
+    });
+  });
+}
+
+
+function showMailEmpty(){
+  document.getElementById('mailEditorWrap').innerHTML='<div class="empty-state"><div class="empty-icon">✉️</div><div>左のリストからテンプレートを選んでください</div></div>';
+}
+
+function selectMailTemplate(id){
+  mId=id;renderMailSidebar();renderMailEditor();
+}
+
+function renderMailEditor(){
+  const t=mailData.find(x=>x.id===mId);
+  if(!t){showMailEmpty();return;}
+  const subLabel=t.subCatKey?`<span style="font-size:11px;color:var(--muted);margin-left:8px">📁 ${esc(t.subCategory||'')} </span>`:'';
+  document.getElementById('mailEditorWrap').innerHTML=`
+    <div class="title-row">
+      <label>テンプレート名${subLabel}</label>
+      <input type="text" value="${esc(t.title||'')} " oninput="updMail('title',this.value)" placeholder="テンプレート名を入力">
+    </div>
+    <div class="step-card">
+      <div class="step-head">
+        <span class="step-badge step-badge-num">✉️ メール内容</span>
+        <span class="step-head-spacer"></span>
+      </div>
+      <div class="step-body">
+        <div class="mail-field">
+          <span class="mail-field-label">件名</span>
+          <input class="mail-input" type="text" value="${esc(t.subject||'')} " oninput="updMail('subject',this.value)" placeholder="件名を入力">
+        </div>
+        <div class="mail-field">
+          <span class="mail-field-label">本文</span>
+          <textarea class="mail-input" oninput="updMail('body',this.value)" placeholder="本文を入力">${esc(t.body||'')} </textarea>
+        </div>
+        <div class="mail-field">
+          <span class="mail-field-label">備考 <span style="font-weight:400;color:var(--muted)">（サイドバーに表示・任意）</span></span>
+          <input class="mail-input" type="text" value="${esc(t.note||'')} " oninput="updMail('note',this.value)" placeholder="例：〇〇のとき使用、初回対応用　など">
+        </div>
+      </div>
+    </div>`;
+}
+
+function updMail(key,val){
+  const t=mailData.find(x=>x.id===mId);
+  if(t){t[key]=val;saveAll();renderMailSidebar();}
+}
+
+function renameMailCat(catKey,val){
+  renameMailCatMeta(catKey,val);
+  // renderMailSidebar() を oninput では呼ばない（呼ぶとDOM破棄→1文字ずつしか入力できないバグ）
+  // onblur 時に renderMailSidebar() が呼ばれてサイドバーが更新される
+  markDirty();
+}
+
+function renameMailSubCat(catKey,subKey,val){
+  renameMailSubCatMeta(catKey,subKey,val);
+  markDirty();
+}
+
+function addMailTemplate(catKey,subCatKey){
+  const cat=getMailCats().find(c=>c.key===catKey);
+  const sub=subCatKey?getMailSubCats(catKey).find(s=>s.key===subCatKey):null;
+  const id='mail_'+Date.now();
+  mailData.push({id,catKey,category:cat?cat.name:'',catColor:cat?cat.color:'#4361ee',
+    subCatKey:subCatKey||null,subCategory:sub?sub.name:'',
+    title:'新しいテンプレート',subject:'',body:'',note:''});
+  saveAll();
+  selectMailTemplate(id);
+  setTimeout(()=>{const inp=document.querySelector('#mailEditorWrap .title-row input');if(inp){inp.focus();inp.select();}},60);
+}
+
+function deleteMailTemplate(id){
+  const t=mailData.find(x=>x.id===id);
+  if(!confirm(`「${t?t.title:'このテンプレート'}」を削除しますか？`))return;
+  mailData=mailData.filter(x=>x.id!==id);
+  if(mId===id){mId=null;showMailEmpty();}
+  renderMailSidebar();
+}
+
+function deleteMailCat(catKey){
+  initMailCatMeta();
+  const cat=mailCatMeta.cats.find(c=>c.key===catKey);
+  const count=mailData.filter(t=>t.catKey===catKey).length;
+  const msg=count>0?`「${cat?cat.name:catKey}」には${count}件のテンプレートがあります。\nカテゴリごと削除しますか？`:`「${cat?cat.name:catKey}」を削除しますか？`;
+  if(!confirm(msg))return;
+  // catMetaから削除
+  mailCatMeta.cats=mailCatMeta.cats.filter(c=>c.key!==catKey);
+  delete mailCatMeta.subs[catKey];
+  saveMailCatMeta();
+  mailData=mailData.filter(t=>t.catKey!==catKey);
+  if(!mailData.find(t=>t.id===mId)){mId=null;showMailEmpty();}
+  saveAll();renderMailSidebar();
+  toast('🗑 削除しました');
+}
+
+function deleteMailSubCat(catKey,subKey){
+  initMailCatMeta();
+  const sub=getMailSubCats(catKey).find(s=>s.key===subKey);
+  const count=mailData.filter(t=>t.catKey===catKey&&t.subCatKey===subKey).length;
+  if(!confirm(`「${sub?sub.name:subKey}」を削除しますか？\n（${count}件のテンプレートも削除されます）`))return;
+  // catMetaから削除
+  if(mailCatMeta.subs[catKey]) mailCatMeta.subs[catKey]=mailCatMeta.subs[catKey].filter(s=>s.key!==subKey);
+  saveMailCatMeta();
+  mailData=mailData.filter(t=>!(t.catKey===catKey&&t.subCatKey===subKey));
+  if(!mailData.find(t=>t.id===mId)){mId=null;showMailEmpty();}
+  saveAll();renderMailSidebar();
+  toast('🗑 削除しました');
+}
+
+function openAddMailCat(){
+  document.getElementById('newMailCatName').value='';
+  document.getElementById('modalMailCat').classList.add('open');
+  setTimeout(()=>document.getElementById('newMailCatName').focus(),100);
+}
+function closeMailModal(){document.getElementById('modalMailCat').classList.remove('open');}
+document.getElementById('newMailCatName').addEventListener('keydown',e=>{if(e.key==='Enter')addMailCategory();if(e.key==='Escape')closeMailModal();});
+
+function openAddMailSubCat(catKey){
+  _pendingMailSubCatKey=catKey;
+  document.getElementById('newMailSubCatName').value='';
+  document.getElementById('modalMailSubCat').classList.add('open');
+  setTimeout(()=>document.getElementById('newMailSubCatName').focus(),100);
+}
+function closeMailSubModal(){document.getElementById('modalMailSubCat').classList.remove('open');_pendingMailSubCatKey=null;}
+document.getElementById('newMailSubCatName').addEventListener('keydown',e=>{if(e.key==='Enter')addMailSubCategory();if(e.key==='Escape')closeMailSubModal();});
+
+function addMailSubCategory(){
+  const name=document.getElementById('newMailSubCatName').value.trim();
+  if(!name){toast('⚠️ サブカテゴリ名を入力してください');return;}
+  if(!_pendingMailSubCatKey){closeMailSubModal();return;}
+  const catKey=_pendingMailSubCatKey;
+  const subKey='msub_'+Date.now();
+  closeMailSubModal();
+  // mailCatMetaにサブカテゴリを追加（テンプレートは自動作成しない）
+  initMailCatMeta();
+  if(!mailCatMeta.subs[catKey]) mailCatMeta.subs[catKey]=[];
+  mailCatMeta.subs[catKey].push({key:subKey,name});
+  saveMailCatMeta();
+  saveAll();
+  renderMailSidebar();
+  toast(`✅ 「${name}」を追加しました`);
+}
+
+function addMailCategory(){
+  const name=document.getElementById('newMailCatName').value.trim();
+  if(!name){toast('⚠️ カテゴリ名を入力してください');return;}
+  const catKey='mcat_'+Date.now();
+  const ci=getMailCats().length%MAIL_COLORS.length;
+  closeMailModal();
+  // mailCatMetaにカテゴリを追加（テンプレートは自動作成しない）
+  initMailCatMeta();
+  mailCatMeta.cats.push({key:catKey,name,color:MAIL_COLORS[ci]});
+  if(!mailCatMeta.subs) mailCatMeta.subs={};
+  mailCatMeta.subs[catKey]=[];
+  saveMailCatMeta();
+  saveAll();
+  renderMailSidebar();
+  toast(`✅ 「${name}」を追加しました`);
+}
+
+
+// =====================================================
+// textarea ダブルクリック → 全文表示サイズに自動リサイズ
+// step-card は overflow:visible なので textarea が伸びれば自動的に拡張される
+// =====================================================
+// =====================================================
+// textarea ダブルクリック → 全文表示サイズに自動リサイズ
+// step-card は flex-shrink:0 なのでカードが伸びてスクロール可能
+// =====================================================
+document.addEventListener('dblclick', function(e) {
+  var ta = e.target.closest('textarea');
+  if (!ta) return;
+  // 高さをリセットしてスクロール高さ（実コンテンツ高さ）を計測
+  ta.style.height = 'auto';
+  var fullH = ta.scrollHeight + 8;
+  ta.style.height = fullH + 'px';
+  ta.style.overflowY = 'hidden';
+  // 親スクロールコンテナを遅延スクロール（テキストエリア下端が見えるように）
+  requestAnimationFrame(function() {
+    var scroll = ta.closest('.editor-scroll') || ta.closest('.mail-editor-wrap');
+    if (!scroll) return;
+    var taBottom = ta.getBoundingClientRect().bottom;
+    var scBottom = scroll.getBoundingClientRect().bottom;
+    if (taBottom > scBottom - 16) {
+      scroll.scrollBy({ top: taBottom - scBottom + 40, behavior: 'smooth' });
+    }
+  });
+});
+
+// 初期化
+// scriptはbody末尾にあるためDOM構築済み。直接呼び出してOK。
+renderMailSidebar();
+render();
+
+// ページ離脱時の未保存警告
+window.addEventListener('beforeunload', function(e){
+  if(_dirty){
+    e.preventDefault();
+    e.returnValue='未保存の変更があります。ページを離れますか？';
+  }
+});
+
+
+// common-utils.js が読み込む 'updateHistory' キーと同じストレージを使う
+// =====================================================
+function loadHistory(){
+  try{const s=localStorage.getItem('updateHistory');return s?JSON.parse(s):[];}catch(e){return [];}
+}
+function _saveHistory(arr){
+  try{localStorage.setItem('updateHistory',JSON.stringify(arr));}catch(e){toast('❌ 履歴保存失敗: '+e.message);}
+}
+
+// モーダルを開く（新規）
+function openAddHistory(){
+  document.getElementById('historyModalTitle').textContent='更新履歴を追加';
+  document.getElementById('historyEditId').value='';
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('historyDate').value=today;
+  document.getElementById('historyAuthor').value='';
+  document.getElementById('historyApprover').value='';
+  document.getElementById('historyContent').value='';
+  document.getElementById('historyModal').classList.add('open');
+  setTimeout(()=>document.getElementById('historyContent').focus(),100);
+}
+
+// モーダルを開く（編集）
+function openEditHistory(id){
+  const arr=loadHistory();
+  const entry=arr.find(h=>h.id===id);
+  if(!entry)return;
+  document.getElementById('historyModalTitle').textContent='更新履歴を編集';
+  document.getElementById('historyEditId').value=id;
+  document.getElementById('historyContent').value=entry.content||'';
+  document.getElementById('historyAuthor').value=entry.author||'';
+  document.getElementById('historyApprover').value=entry.approver||'';
+  document.getElementById('historyDate').value=entry.date||'';
+  document.getElementById('historyModal').classList.add('open');
+  setTimeout(()=>document.getElementById('historyContent').focus(),100);
+}
+
+function closeHistoryModal(){document.getElementById('historyModal').classList.remove('open');}
+['historyContent','historyAuthor','historyApprover','historyDate'].forEach(function(id){
+  document.getElementById(id).addEventListener('keydown',function(e){
+    if(e.key==='Enter')saveHistoryEntry();
+    if(e.key==='Escape')closeHistoryModal();
+  });
+});
+
+function saveHistoryEntry(){
+  const content=document.getElementById('historyContent').value.trim();
+  const author=document.getElementById('historyAuthor').value.trim();
+  const approver=document.getElementById('historyApprover').value.trim();
+  const date=document.getElementById('historyDate').value.trim();
+  if(!content||!date){toast('⚠️ 更新内容と更新日を入力してください');return;}
+  const id=document.getElementById('historyEditId').value;
+  const arr=loadHistory();
+  if(id){
+    const idx=arr.findIndex(h=>h.id===id);
+    if(idx>=0) arr[idx]={id,content,author,approver,date};
+  } else {
+    arr.unshift({id:'h_'+Date.now(),content,author,approver,date});
+  }
+  _saveHistory(arr);
+  closeHistoryModal();
+  toast('✅ 更新履歴を保存しました');
+  renderAdminHistoryPanel();
+  // common-utils.js側の描画も即時更新
+  if(window.renderHistory) window.renderHistory();
+}
+
+function deleteHistoryEntry(id){
+  if(!confirm('この更新履歴を削除しますか？'))return;
+  const arr=loadHistory().filter(h=>h.id!==id);
+  _saveHistory(arr);
+  toast('🗑 削除しました');
+  renderAdminHistoryPanel();
+  if(window.renderHistory) window.renderHistory();
+}
+
+// サイドメニュー内の更新履歴セクションを管理者用UIで描画
+function renderAdminHistoryPanel(){
+  const container=document.getElementById('adminHistoryPanel');
+  if(!container)return;
+  const arr=loadHistory();
+  let h=`<div style="padding:8px 14px;display:flex;justify-content:flex-end;">
+    <button onclick="openAddHistory()" style="height:28px;padding:0 12px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">＋ 追加</button>
+  </div>`;
+  if(arr.length===0){
+    h+=`<div style="padding:10px 16px;font-size:12px;color:var(--muted);text-align:center;">更新履歴がありません</div>`;
+  } else {
+    const tdStyle='padding:5px 7px;border:1px solid var(--border);font-size:11px;color:var(--text);word-break:break-all;';
+    const thStyle='padding:5px 7px;border:1px solid var(--border);font-size:10px;font-weight:700;color:var(--muted);background:#f8f9fa;text-align:center;white-space:nowrap;';
+    h+=`<div style="overflow-x:auto;padding:0 12px 12px;">
+      <table style="width:100%;border-collapse:collapse;min-width:300px;">
+        <thead><tr>
+          <th style="${thStyle}">更新内容</th>
+          <th style="${thStyle}width:52px;">更新者</th>
+          <th style="${thStyle}width:52px;">承認者</th>
+          <th style="${thStyle}width:78px;">更新日</th>
+          <th style="${thStyle}width:48px;"></th>
+        </tr></thead><tbody>`;
+    arr.forEach(entry=>{
+      h+=`<tr>
+        <td style="${tdStyle}">${esc(entry.content||'')}</td>
+        <td style="${tdStyle}text-align:center;">${esc(entry.author||'-')}</td>
+        <td style="${tdStyle}text-align:center;">${esc(entry.approver||'-')}</td>
+        <td style="${tdStyle}text-align:center;white-space:nowrap;">${esc(entry.date||'')}</td>
+        <td style="${tdStyle}text-align:center;white-space:nowrap;">
+          <button onclick="openEditHistory('${entry.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--accent);padding:1px 4px;" title="編集">✏️</button>
+          <button onclick="deleteHistoryEntry('${entry.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--red);padding:1px 4px;" title="削除">🗑</button>
+        </td>
+      </tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  }
+  container.innerHTML=h;
+}
+
+
+// =====================================================
+// 画面遷移エディタ（admin.html 内蔵版）
+// =====================================================
+var screenPatterns = [];
+var _scrCurrentPatId = null;
+var _scrCurrentScrId = null;
+var _scrInit = false;
+
+function _scrGenId(){ return 'sc'+Math.random().toString(36).substr(2,8); }
+
+function initScreenEditor(){
+  if(!_scrInit){
+    _scrInit = true;
+    try{
+      var s = localStorage.getItem('screenFlowData');
+      if(s){ var d=JSON.parse(s); if(Array.isArray(d)&&d.length) screenPatterns=d; }
+    }catch(e){}
+    if(!screenPatterns.length){
+      screenPatterns=[{id:_scrGenId(),name:'パターン1',screens:[]}];
+    }
+    _scrCurrentPatId = screenPatterns[0].id;
+  }
+  scrRenderAll();
+}
+
+function scrRenderAll(){
+  scrRenderPatList();
+  scrRenderScreenList();
+  scrRenderFlow();
+}
+
+/* ── パターン ── */
+function scrGetPat(id){
+  return screenPatterns.find(function(p){return p.id===(id||_scrCurrentPatId);})||null;
+}
+function scrRenderPatList(){
+  var el=document.getElementById('scrPatList'); if(!el) return;
+  var h='';
+  screenPatterns.forEach(function(p){
+    var active = p.id===_scrCurrentPatId?' active':'';
+    h+='<div class="scr-pat-item'+active+'" onclick="scrSelectPat(\''+p.id+'\')">'
+      +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(p.name)+'</span>'
+      +(screenPatterns.length>1
+        ?'<button onclick="event.stopPropagation();scrDelPat(\''+p.id+'\')" '
+         +'style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:1px 4px;">✕</button>'
+        :'')
+      +'</div>';
+  });
+  el.innerHTML=h;
+}
+function scrSelectPat(id){
+  _scrCurrentPatId=id; _scrCurrentScrId=null;
+  scrRenderPatList(); scrRenderScreenList(); scrRenderFlow();
+}
+function scrAddPattern(){
+  var name=prompt('パターン名を入力してください','パターン'+(screenPatterns.length+1));
+  if(!name||!name.trim()) return;
+  var p={id:_scrGenId(),name:name.trim(),screens:[]};
+  screenPatterns.push(p);
+  _scrCurrentPatId=p.id;
+  scrRenderAll(); scrSaveData(); markDirty();
+}
+function scrDelPat(id){
+  if(!confirm('このパターンを削除しますか？')) return;
+  screenPatterns=screenPatterns.filter(function(p){return p.id!==id;});
+  if(!screenPatterns.length) screenPatterns=[{id:_scrGenId(),name:'パターン1',screens:[]}];
+  if(_scrCurrentPatId===id) _scrCurrentPatId=screenPatterns[0].id;
+  scrRenderAll(); scrSaveData(); markDirty();
+}
+
+/* ── 画面一覧 ── */
+function scrRenderScreenList(){
+  var el=document.getElementById('scrScreenList'); if(!el) return;
+  var pat=scrGetPat();
+  if(!pat||!pat.screens||!pat.screens.length){
+    el.innerHTML='';
+    var hint=document.getElementById('scrDndHint');
+    if(hint) hint.style.display='block';
+    return;
+  }
+  var hint=document.getElementById('scrDndHint');
+  if(hint) hint.style.display='none';
+  var h='';
+  pat.screens.forEach(function(s,i){
+    var active=s.id===_scrCurrentScrId?' active':'';
+    var thumb=s.imageSrc
+      ?'<img src="'+s.imageSrc+'" alt="">'
+      :'<span style="font-size:14px;">🖼️</span>';
+    h+='<div class="scr-scr-item'+active+'" onclick="scrOpenModal(\''+s.id+'\')">'
+      +'<div class="scr-scr-thumb">'+thumb+'</div>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:9px;color:var(--muted);">SCR-'+String(i+1).padStart(2,'0')+'</div>'
+      +'<div class="scr-scr-name">'+esc(s.name||'（名称なし）')+'</div>'
+      +'</div>'
+      +'<button class="scr-scr-del" onclick="event.stopPropagation();scrQuickDel(\''+s.id+'\')" title="削除">✕</button>'
+      +'</div>';
+  });
+  el.innerHTML=h;
+}
+function scrQuickDel(scrId){
+  var pat=scrGetPat(); if(!pat) return;
+  if(!confirm('この画面を削除しますか？')) return;
+  pat.screens=pat.screens.filter(function(s){return s.id!==scrId;});
+  if(_scrCurrentScrId===scrId) _scrCurrentScrId=null;
+  scrRenderScreenList(); scrRenderFlow(); scrSaveData(); markDirty();
+}
+
+/* ── D&D 画像追加 ── */
+function scrDragOver(e){
+  e.preventDefault();
+  document.getElementById('scrDndZone').classList.add('drag-over');
+  document.getElementById('scrDndHint').classList.add('drag-over');
+}
+function scrDragLeave(e){
+  e.preventDefault();
+  document.getElementById('scrDndZone').classList.remove('drag-over');
+  var h=document.getElementById('scrDndHint'); if(h) h.classList.remove('drag-over');
+}
+function scrDrop(e){
+  e.preventDefault();
+  scrDragLeave(e);
+  var files=Array.from(e.dataTransfer.files).filter(function(f){return f.type.startsWith('image/');});
+  if(!files.length) return;
+  files.forEach(scrReadAndAdd);
+}
+function scrFileAdd(e){
+  Array.from(e.target.files).forEach(scrReadAndAdd);
+  e.target.value='';
+}
+function scrReadAndAdd(file){
+  var pat=scrGetPat(); if(!pat) return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var name=file.name.replace(/\.[^.]+$/,'');
+    var scr={id:_scrGenId(),name:name,imageSrc:ev.target.result,hotspots:[]};
+    pat.screens.push(scr);
+    scrRenderScreenList(); scrRenderFlow(); scrSaveData(); markDirty();
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ── フロー図 ── */
+function scrRenderFlow(){
+  var grid=document.getElementById('scrFlowGrid');
+  var empty=document.getElementById('scrFlowEmpty');
+  if(!grid) return;
+  var pat=scrGetPat();
+  var screens=pat?pat.screens:[];
+  if(!screens.length){
+    grid.innerHTML=''; if(empty) empty.style.display='flex'; return;
+  }
+  if(empty) empty.style.display='none';
+  var h='';
+  screens.forEach(function(s,i){
+    var thumb=s.imageSrc
+      ?'<img src="'+s.imageSrc+'" alt="">'
+      :'<span style="font-size:26px;">🖼️</span>';
+    var hsCount=(s.hotspots||[]).length;
+    h+='<div class="scr-flow-card" onclick="scrOpenModal(\''+s.id+'\')" title="クリックして編集">'
+      +'<div class="scr-flow-thumb">'+thumb+'</div>'
+      +'<div class="scr-flow-body">'
+      +'<div class="scr-flow-num">SCR-'+String(i+1).padStart(2,'0')+'</div>'
+      +'<div class="scr-flow-name">'+esc(s.name||'（名称なし）')+'</div>'
+      +(hsCount?'<div class="scr-flow-hs">→ '+hsCount+'件のリンク</div>':'')
+      +'</div></div>';
+    if(i<screens.length-1){
+      h+='<div style="display:flex;align-items:center;padding-top:42px;color:var(--muted);font-size:18px;">→</div>';
+    }
+  });
+  grid.innerHTML=h;
+}
+
+/* ── 詳細モーダル ── */
+function scrOpenModal(scrId){
+  var pat=scrGetPat(); if(!pat) return;
+  var scr=pat.screens.find(function(s){return s.id===scrId;}); if(!scr) return;
+  _scrCurrentScrId=scrId;
+  document.getElementById('scrModalPatId').value=_scrCurrentPatId;
+  document.getElementById('scrModalScrId').value=scrId;
+  document.getElementById('scrModalName').value=scr.name||'';
+  // 画像プレビュー
+  var prev=document.getElementById('scrModalImgPreview');
+  if(prev) prev.innerHTML=scr.imageSrc
+    ?'<img src="'+scr.imageSrc+'" style="max-width:100%;max-height:80px;border-radius:4px;" alt="">'
+    :'<span style="font-size:28px;">📤</span>';
+  scrRenderModalHsList(scr);
+  document.getElementById('scrDetailModal').classList.add('show');
+  scrRenderScreenList(); // アクティブ反映
+}
+function scrCloseModal(){
+  document.getElementById('scrDetailModal').classList.remove('show');
+  _scrCurrentScrId=null;
+  scrRenderScreenList();
+}
+
+/* ── ホットスポット（メールテンプレートジャンプ対応） ── */
+function scrRenderModalHsList(scr){
+  var el=document.getElementById('scrHsList'); if(!el) return;
+  if(!scr.hotspots||!scr.hotspots.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:4px 0;">ホットスポットなし</div>';
+    return;
+  }
+  var mailTpls=[];
+  try{ var ms=localStorage.getItem('mailTemplates'); if(ms) mailTpls=JSON.parse(ms); }catch(e){}
+  var pat=scrGetPat();
+  var otherScreens=(pat.screens||[]).filter(function(s){return s.id!==scr.id;});
+  var h='';
+  (scr.hotspots||[]).forEach(function(hs,hi){
+    // 画面リンクとメールリンクの option 生成
+    var screenOpts=otherScreens.map(function(s){
+      return '<option value="'+s.id+'"'+(hs.target===s.id?' selected':'')+'>'+esc(s.name||'（名称なし）')+'</option>';
+    }).join('');
+    var mailOpts=mailTpls.map(function(t){
+      var v='mail:'+t.id;
+      return '<option value="'+v+'"'+(hs.target===v?' selected':'')+'>✉️ '+esc(t.title||t.subject||t.id)+'</option>';
+    }).join('');
+    h+='<div class="scr-hs-row">'
+      +'<span style="font-size:10px;color:var(--muted);flex-shrink:0;min-width:36px;">HS-'+(hi+1)+'</span>'
+      +'<select class="scr-hs-sel" onchange="scrHsSet('+hi+',\'target\',this.value)">'
+      +'<option value="">— リンク先を選択 —</option>'
+      +(screenOpts?'<optgroup label="🖥 画面">'+screenOpts+'</optgroup>':'')
+      +(mailOpts?'<optgroup label="✉️ メールテンプレート">'+mailOpts+'</optgroup>':'')
+      +'</select>'
+      +'<input type="text" class="scr-hs-sel" style="width:90px;flex-shrink:0;" placeholder="メモ" '
+      +'value="'+esc(hs.note||'')+'" oninput="scrHsSet('+hi+',\'note\',this.value)">'
+      +'<button onclick="scrDelHotspot('+hi+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;" title="削除">✕</button>'
+      +'</div>';
+  });
+  el.innerHTML=h;
+}
+function scrHsSet(idx,field,val){
+  var pat=scrGetPat(); if(!pat) return;
+  var scr=pat.screens.find(function(s){return s.id===_scrCurrentScrId;}); if(!scr||!scr.hotspots[idx]) return;
+  scr.hotspots[idx][field]=val;
+}
+function scrAddHotspot(){
+  var pat=scrGetPat(); if(!pat) return;
+  var scr=pat.screens.find(function(s){return s.id===_scrCurrentScrId;}); if(!scr) return;
+  if(!scr.hotspots) scr.hotspots=[];
+  scr.hotspots.push({id:_scrGenId(),target:'',note:''});
+  scrRenderModalHsList(scr);
+}
+function scrDelHotspot(idx){
+  var pat=scrGetPat(); if(!pat) return;
+  var scr=pat.screens.find(function(s){return s.id===_scrCurrentScrId;}); if(!scr) return;
+  scr.hotspots.splice(idx,1);
+  scrRenderModalHsList(scr);
+}
+function scrSaveModal(){
+  var pat=scrGetPat(); if(!pat) return;
+  var scrId=document.getElementById('scrModalScrId').value;
+  var scr=pat.screens.find(function(s){return s.id===scrId;}); if(!scr) return;
+  var newName=document.getElementById('scrModalName').value.trim();
+  scr.name=newName||'（名称なし）';
+  scrCloseModal();
+  scrRenderFlow(); scrSaveData(); markDirty();
+  toast('✅ 画面を保存しました');
+}
+function scrDeleteScreen(){
+  var scrId=document.getElementById('scrModalScrId').value;
+  if(!confirm('この画面を削除しますか？')) return;
+  var pat=scrGetPat(); if(!pat) return;
+  pat.screens=pat.screens.filter(function(s){return s.id!==scrId;});
+  _scrCurrentScrId=null;
+  scrCloseModal();
+  scrRenderFlow(); scrSaveData(); markDirty();
+}
+function scrModalImgChange(e){
+  var file=e.target.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var pat=scrGetPat(); if(!pat) return;
+    var scrId=document.getElementById('scrModalScrId').value;
+    var scr=pat.screens.find(function(s){return s.id===scrId;}); if(!scr) return;
+    scr.imageSrc=ev.target.result;
+    var prev=document.getElementById('scrModalImgPreview');
+    if(prev) prev.innerHTML='<img src="'+ev.target.result+'" style="max-width:100%;max-height:80px;border-radius:4px;" alt="">';
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+}
+function scrModalImgDrop(e){
+  var files=Array.from(e.dataTransfer.files).filter(function(f){return f.type.startsWith('image/');});
+  if(!files.length) return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var pat=scrGetPat(); if(!pat) return;
+    var scrId=document.getElementById('scrModalScrId').value;
+    var scr=pat.screens.find(function(s){return s.id===scrId;}); if(!scr) return;
+    scr.imageSrc=ev.target.result;
+    var prev=document.getElementById('scrModalImgPreview');
+    if(prev) prev.innerHTML='<img src="'+ev.target.result+'" style="max-width:100%;max-height:80px;border-radius:4px;" alt="">';
+  };
+  reader.readAsDataURL(files[0]);
+}
+
+// モーダル外クリック・ESC で閉じる
+document.addEventListener('click',function(e){
+  if(e.target===document.getElementById('scrDetailModal')) scrCloseModal();
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&document.getElementById('scrDetailModal').classList.contains('show')) scrCloseModal();
+});
+
+/* ── データ保存 ── */
+function scrSaveData(){
+  try{ localStorage.setItem('screenFlowData',JSON.stringify(screenPatterns)); }catch(e){}
+}
+
+// DOMContentLoaded 後に更新履歴タブの初期描画
+document.addEventListener('DOMContentLoaded', function(){
+  renderAdminHistoryPanel();
+});
+
+</script>
+</body>
+</html>
