@@ -6,7 +6,6 @@
   <title>🛠 管理画面</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
   <script src="common-utils.js"></script>
 </head>
@@ -23,7 +22,6 @@
   } else {
     // 認証失敗: タブ/ウィンドウを閉じる
     try { window.close(); } catch(e) {}
-    // window.close() が無効な場合（直接アクセス等）は空ページを表示
     document.documentElement.innerHTML =
       '<html><body style="display:flex;align-items:center;justify-content:center;' +
       'height:100vh;font-family:sans-serif;color:#666;background:#f5f6fa;">' +
@@ -37,7 +35,7 @@
 
 <header>
   <div class="hd-left" style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-    <button id="menuBtn" onclick="toggleSideMenu()">☰</button>
+    <button id="menuBtn" onclick="toggleSideMenu()" style="height:32px;width:32px;padding:0;font-size:18px;background:none;border:none;color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;">☰</button>
     <span class="hd-title-btn">🛠 管理画面</span>
     <button class="help-circle-btn" onclick="openAdminHelp()" title="使い方マニュアル">?</button>
   </div>
@@ -123,6 +121,7 @@
   </div>
 
   <!-- ===== 画面遷移タブ ===== -->
+  <!-- ===== 画面遷移タブ ===== -->
   <div class="tab-panel" id="tabScreen" style="overflow:hidden;">
     <!-- パターン一覧 -->
     <aside class="scr-pat-sidebar">
@@ -142,62 +141,123 @@
         ondragleave="scrDragLeave(event)"
         ondrop="scrDrop(event)">
         <div id="scrScreenList"></div>
-        <div class="scr-dnd-hint" id="scrDndHint">📤 画像をここにD&D して画面を追加</div>
+        <div class="scr-dnd-hint" id="scrDndHint">📤 画像をここにD&amp;D して画面を追加</div>
       </div>
       <label class="scr-file-add-btn">
         📂 ファイルを選択して追加
         <input type="file" accept="image/*" multiple onchange="scrFileAdd(event)">
       </label>
     </aside>
-    <!-- フロー図エリア -->
-    <main style="flex:1;overflow:auto;background:var(--bg);padding:20px;display:flex;flex-direction:column;gap:0;">
-      <div id="scrFlowEmpty" style="display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);font-size:12px;padding:40px;text-align:center;">
-        <span style="font-size:36px;">📭</span>
-        <span>パターンを選択し、左サイドに画像をドロップして画面を追加してください</span>
-      </div>
-      <div id="scrFlowGrid" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;"></div>
-    </main>
-  </div>
-  <!-- 画面詳細編集モーダル -->
-  <div class="scr-modal-bg" id="scrDetailModal">
-    <div class="scr-modal">
-      <div class="scr-modal-title">
-        <span id="scrModalTitle">画面を編集</span>
-        <button onclick="scrCloseModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);">✕</button>
-      </div>
-      <input type="hidden" id="scrModalPatId">
-      <input type="hidden" id="scrModalScrId">
-      <div style="margin-bottom:12px;">
-        <label class="scr-form-label">画面名</label>
-        <input class="scr-form-input" id="scrModalName" placeholder="例：ログイン画面" onkeydown="if(event.key==='Enter')scrSaveModal()">
-      </div>
-      <div style="margin-bottom:14px;">
-        <label class="scr-form-label">スクリーンショット</label>
-        <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed var(--border);border-radius:7px;padding:14px;cursor:pointer;gap:4px;font-size:11px;color:var(--muted);transition:all .12s;"
-          ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
-          ondragleave="this.style.borderColor=''"
-          ondrop="event.preventDefault();this.style.borderColor='';scrModalImgDrop(event)">
-          <span id="scrModalImgPreview" style="font-size:28px;">📤</span>
-          <span>クリックまたはD&Dで画像を差し替え</span>
-          <input type="file" accept="image/*" style="display:none" onchange="scrModalImgChange(event)">
-        </label>
-      </div>
-      <div style="margin-bottom:6px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <label class="scr-form-label" style="margin:0;">ホットスポット（リンク先）</label>
-          <button class="scr-btn-xs" onclick="scrAddHotspot()">＋ 追加</button>
+    <!-- フロー図エリア（ズーム/パン対応） -->
+    <div id="scrFlowMain" style="flex:1;overflow:hidden;position:relative;background:var(--bg);display:flex;flex-direction:column;">
+      <div id="scrFlowViewport" style="flex:1;overflow:hidden;position:relative;cursor:grab;">
+        <div id="scrFlowTransform" style="position:absolute;top:0;left:0;transform-origin:0 0;padding:20px;will-change:transform;">
+          <div id="scrFlowEmpty" style="display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);font-size:12px;padding:40px;text-align:center;">
+            <span style="font-size:36px;">📭</span>
+            <span>パターンを選択し、左サイドに画像をドロップして画面を追加してください</span>
+          </div>
+          <div id="scrFlowGrid" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;"></div>
         </div>
-        <div id="scrHsList"></div>
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
-        <button class="btn btn-secondary" onclick="scrDeleteScreen()" style="margin-right:auto;">🗑 削除</button>
-        <button class="modal-cancel" onclick="scrCloseModal()">キャンセル</button>
-        <button class="btn btn-accent" onclick="scrSaveModal()">保存</button>
+      <!-- ズームコントロール -->
+      <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:2px;z-index:10;background:var(--white);border-radius:8px;padding:3px;box-shadow:0 2px 8px rgba(0,0,0,.15);border:1px solid var(--border);">
+        <button onclick="scrZoomIn()" class="scr-zoom-btn" title="拡大（Ctrl+ホイール）">＋</button>
+        <button onclick="scrZoomReset()" id="scrZoomLbl" class="scr-zoom-btn" title="リセット" style="min-width:48px;font-size:11px;">100%</button>
+        <button onclick="scrZoomOut()" class="scr-zoom-btn" title="縮小（Ctrl+ホイール）">－</button>
       </div>
     </div>
+    <!-- 右サイドバー（画面設定・ホットスポット・トリミング） -->
+    <aside class="scr-right-sidebar" id="scrRightSidebar">
+      <div id="scrRsNoSel" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--muted);">
+        <span style="font-size:40px;">🖼️</span>
+        <span style="font-size:12px;">左の画面一覧から画面を選択してください</span>
+      </div>
+      <div id="scrRsEditor" style="display:none;height:100%;overflow-y:auto;flex-direction:column;">
+        <!-- 画面設定 -->
+        <div class="scr-rs-sec">
+          <div class="scr-rs-title">画面設定</div>
+          <div class="scr-rs-field">
+            <label class="scr-form-label">画面名</label>
+            <input class="scr-form-input" id="scrRsName" placeholder="例：ログイン画面" oninput="scrRsUpdateName()">
+          </div>
+          <div class="scr-rs-field">
+            <label class="scr-form-label">メモ</label>
+            <textarea id="scrRsMemo" style="width:100%;min-height:52px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;font-family:inherit;resize:vertical;background:var(--surface);color:var(--text);box-sizing:border-box;" placeholder="業務説明など..." oninput="scrRsUpdateMemo()"></textarea>
+          </div>
+        </div>
+        <!-- スクリーンショット + 編集モード -->
+        <div class="scr-rs-sec">
+          <div class="scr-rs-title">スクリーンショット</div>
+          <!-- モード切替 -->
+          <div style="display:flex;gap:4px;margin-bottom:8px;">
+            <button id="scrModeHotspot" class="scr-mode-btn active" onclick="scrSetEditMode('hotspot')">📍 ホットスポット</button>
+            <button id="scrModeCrop" class="scr-mode-btn" onclick="scrSetEditMode('crop')">✂️ トリミング</button>
+          </div>
+          <!-- 画像エリア（D&D + クリックアップロード） -->
+          <div id="scrRsImgArea" style="border:2px dashed var(--border);border-radius:7px;overflow:hidden;position:relative;min-height:80px;transition:border-color .12s;"
+            ondragover="event.preventDefault();document.getElementById('scrRsImgArea').style.borderColor='var(--accent)'"
+            ondragleave="document.getElementById('scrRsImgArea').style.borderColor=''"
+            ondrop="event.preventDefault();document.getElementById('scrRsImgArea').style.borderColor='';scrRsImgDrop(event)">
+            <div id="scrRsImgPlaceholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;position:relative;">
+              <span style="font-size:28px;">📤</span>
+              <span>クリックして画像をアップロード</span>
+              <span style="font-size:10px;">PNG / JPG / GIF / WebP　またはここにD&amp;D</span>
+              <label style="position:absolute;inset:0;cursor:pointer;opacity:0;">
+                <input type="file" accept="image/*" onchange="scrRsImgUpload(event)" style="display:none;">
+              </label>
+            </div>
+            <div id="scrRsImgCanvas" style="display:none;position:relative;">
+              <img id="scrRsImg" style="display:block;max-width:100%;user-select:none;pointer-events:none;vertical-align:top;">
+              <canvas id="scrRsOverlay" style="position:absolute;top:0;left:0;cursor:crosshair;touch-action:none;"></canvas>
+            </div>
+          </div>
+          <!-- 差し替えボタン（画像あり時） -->
+          <label id="scrRsUploadBtn" style="display:none;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--accent);cursor:pointer;margin-top:6px;background:var(--accent-lt);width:fit-content;">
+            📤 画像を差し替え
+            <input type="file" accept="image/*" onchange="scrRsImgUpload(event)" style="display:none;">
+          </label>
+          <!-- リサイズ・トリミングへ誘導ボタン -->
+          <button id="scrRsResizeBtn" style="display:none;width:100%;margin-top:6px;height:34px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:12px;font-family:inherit;cursor:pointer;color:var(--text);align-items:center;justify-content:center;gap:6px;" onclick="scrSetEditMode('crop')">
+            🔁 画像をリサイズ・トリミング
+          </button>
+        </div>
+        <!-- トリミング設定（crop モード時） -->
+        <div class="scr-rs-sec" id="scrCropSec" style="display:none;">
+          <div class="scr-rs-title">トリミング設定</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--muted);">幅</span>
+            <input id="scrCropW" type="number" placeholder="幅px" style="width:68px;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:12px;font-family:inherit;background:var(--surface);color:var(--text);">
+            <span style="font-size:11px;color:var(--muted);">×</span>
+            <span style="font-size:11px;color:var(--muted);">高さ</span>
+            <input id="scrCropH" type="number" placeholder="高さpx" style="width:68px;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:12px;font-family:inherit;background:var(--surface);color:var(--text);">
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px;" id="scrCropOrigSize"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+            <button class="scr-btn-xs primary" onclick="scrApplyResize()">↔ リサイズ適用</button>
+            <button class="scr-btn-xs" id="scrApplyCropBtn" onclick="scrApplyCropSel()" style="display:none;background:var(--green);color:#fff;border-color:var(--green);">✂️ 選択をトリミング</button>
+            <button class="scr-btn-xs" onclick="scrCropSelClear()">クリア</button>
+          </div>
+        </div>
+        <!-- ホットスポット管理 -->
+        <div class="scr-rs-sec">
+          <div class="scr-rs-title">ホットスポット（遷移エリア）</div>
+          <div id="scrRsHsHint" style="display:none;background:var(--accent-lt);border:1px solid var(--accent);border-radius:5px;padding:6px 8px;font-size:11px;color:var(--accent);margin-bottom:8px;">
+            💙 画像をドラッグして遷移エリアを描いてください
+          </div>
+          <div id="scrRsHsList"></div>
+        </div>
+        <!-- 削除 -->
+        <div class="scr-rs-sec">
+          <button onclick="scrQuickDelSel()" style="width:100%;height:32px;background:none;border:1px solid var(--red);border-radius:6px;color:var(--red);font-size:12px;font-family:inherit;cursor:pointer;transition:background .12s;" onmouseover="this.style.background='var(--danger-lt)'" onmouseout="this.style.background='none'">🗑 この画面を削除</button>
+        </div>
+      </div>
+    </aside>
+    <!-- 旧モーダル互換（非表示ダミー） -->
+    <input type="hidden" id="scrModalPatId">
+    <input type="hidden" id="scrModalScrId">
   </div>
 
-  <!-- ===== 更新履歴タブ ===== -->
+    <!-- ===== 更新履歴タブ ===== -->
   <div class="tab-panel tab-panel-history" id="tabHistory">
     <div style="max-width:860px;margin:0 auto;">
       <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;">📝 更新履歴</div>
@@ -1929,12 +1989,26 @@ function renderAdminHistoryPanel(){
 
 
 // =====================================================
-// 画面遷移エディタ（admin.html 内蔵版）
+// =====================================================
+// 画面遷移エディタ（admin.html 内蔵版）新実装
 // =====================================================
 var screenPatterns = [];
 var _scrCurrentPatId = null;
-var _scrCurrentScrId = null;
+var _scrSelScrId = null;      // 右サイドバーで選択中の画面ID
 var _scrInit = false;
+var _scrEditMode = 'hotspot'; // 'hotspot' | 'crop'
+var _scrEditPatId = null;     // パターン名インライン編集中のID
+
+// ズーム/パン
+var _scrZoom = 1;
+var _scrPanX = 0, _scrPanY = 0;
+var _scrIsPanning = false;
+var _scrPanStart = null;
+
+// 描画（ホットスポット or トリミング選択）
+var _scrHsDrawing = false;
+var _scrHsDrawStart = null;
+var _scrCropSel = null; // {x,y,w,h} 0-1 相対座標
 
 function _scrGenId(){ return 'sc'+Math.random().toString(36).substr(2,8); }
 
@@ -1949,6 +2023,8 @@ function initScreenEditor(){
       screenPatterns=[{id:_scrGenId(),name:'パターン1',screens:[]}];
     }
     _scrCurrentPatId = screenPatterns[0].id;
+    _scrInitFlowCanvas();
+    _scrInitOverlayEvents();
   }
   scrRenderAll();
 }
@@ -1957,31 +2033,118 @@ function scrRenderAll(){
   scrRenderPatList();
   scrRenderScreenList();
   scrRenderFlow();
+  _scrUpdateRightSidebar();
 }
+
+/* ── ズーム / パン ── */
+function _scrInitFlowCanvas(){
+  var vp = document.getElementById('scrFlowViewport');
+  if(!vp) return;
+
+  // ホイールでズーム
+  vp.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var delta = e.deltaY > 0 ? 0.88 : 1.13;
+    var newZoom = Math.max(0.15, Math.min(4, _scrZoom * delta));
+    var rect = vp.getBoundingClientRect();
+    var mx = e.clientX - rect.left;
+    var my = e.clientY - rect.top;
+    _scrPanX = mx - (mx - _scrPanX) * (newZoom / _scrZoom);
+    _scrPanY = my - (my - _scrPanY) * (newZoom / _scrZoom);
+    _scrZoom = newZoom;
+    _scrApplyTransform();
+  }, {passive:false});
+
+  // ドラッグでパン（flow-card 以外の領域）
+  vp.addEventListener('mousedown', function(e){
+    if(e.target.closest('.scr-flow-card')) return;
+    if(e.button !== 0) return;
+    _scrIsPanning = true;
+    _scrPanStart = {x: e.clientX - _scrPanX, y: e.clientY - _scrPanY};
+    vp.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e){
+    if(!_scrIsPanning) return;
+    _scrPanX = e.clientX - _scrPanStart.x;
+    _scrPanY = e.clientY - _scrPanStart.y;
+    _scrApplyTransform();
+  });
+  document.addEventListener('mouseup', function(){
+    if(!_scrIsPanning) return;
+    _scrIsPanning = false;
+    var v = document.getElementById('scrFlowViewport');
+    if(v) v.style.cursor = 'grab';
+  });
+}
+
+function _scrApplyTransform(){
+  var t = document.getElementById('scrFlowTransform');
+  if(!t) return;
+  t.style.transform = 'translate('+_scrPanX+'px,'+_scrPanY+'px) scale('+_scrZoom+')';
+  var lbl = document.getElementById('scrZoomLbl');
+  if(lbl) lbl.textContent = Math.round(_scrZoom*100)+'%';
+}
+
+function scrZoomIn(){ _scrZoom = Math.min(4, _scrZoom*1.25); _scrApplyTransform(); }
+function scrZoomOut(){ _scrZoom = Math.max(0.15, _scrZoom/1.25); _scrApplyTransform(); }
+function scrZoomReset(){ _scrZoom=1; _scrPanX=0; _scrPanY=0; _scrApplyTransform(); }
 
 /* ── パターン ── */
 function scrGetPat(id){
   return screenPatterns.find(function(p){return p.id===(id||_scrCurrentPatId);})||null;
 }
+
 function scrRenderPatList(){
   var el=document.getElementById('scrPatList'); if(!el) return;
   var h='';
   screenPatterns.forEach(function(p){
     var active = p.id===_scrCurrentPatId?' active':'';
-    h+='<div class="scr-pat-item'+active+'" onclick="scrSelectPat(\''+p.id+'\')">'
-      +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(p.name)+'</span>'
-      +(screenPatterns.length>1
-        ?'<button onclick="event.stopPropagation();scrDelPat(\''+p.id+'\')" '
-         +'style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:1px 4px;">✕</button>'
-        :'')
-      +'</div>';
+    if(_scrEditPatId === p.id){
+      h+='<div class="scr-pat-item'+active+'" style="padding:4px 6px;">'
+        +'<input class="scr-pat-name-inp" value="'+esc(p.name)+'"'
+        +' onclick="event.stopPropagation()"'
+        +' onblur="_scrCommitPatName(\''+p.id+'\',this.value)"'
+        +' onkeydown="if(event.key===\'Enter\')this.blur();if(event.key===\'Escape\'){_scrEditPatId=null;scrRenderPatList();}"'
+        +' style="flex:1;min-width:0;border:1px solid var(--accent);border-radius:3px;padding:1px 5px;font-size:12px;font-family:inherit;background:var(--white);color:var(--text);outline:none;">'
+        +(screenPatterns.length>1?'<button onclick="event.stopPropagation();scrDelPat(\''+p.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:1px 3px;flex-shrink:0;">✕</button>':'')
+        +'</div>';
+    } else {
+      h+='<div class="scr-pat-item'+active+'" onclick="scrSelectPat(\''+p.id+'\')">'
+        +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" '
+        +' title="クリックで選択 / ダブルクリックで名前編集"'
+        +' ondblclick="event.stopPropagation();_scrStartEditPat(\''+p.id+'\')">'+esc(p.name)+'</span>'
+        +(screenPatterns.length>1?'<button onclick="event.stopPropagation();scrDelPat(\''+p.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:1px 3px;flex-shrink:0;opacity:0;transition:opacity .15s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">✕</button>':'')
+        +'</div>';
+    }
   });
   el.innerHTML=h;
+  if(_scrEditPatId){
+    setTimeout(function(){
+      var inp = el.querySelector('.scr-pat-name-inp');
+      if(inp){ inp.focus(); inp.select(); }
+    }, 20);
+  }
 }
+
+function _scrStartEditPat(id){ _scrEditPatId=id; scrRenderPatList(); }
+
+function _scrCommitPatName(id, name){
+  _scrEditPatId=null;
+  name=(name||'').trim();
+  if(name){
+    var p=screenPatterns.find(function(x){return x.id===id;});
+    if(p){ p.name=name; scrSaveData(); markDirty(); }
+  }
+  scrRenderPatList();
+}
+
 function scrSelectPat(id){
-  _scrCurrentPatId=id; _scrCurrentScrId=null;
+  _scrCurrentPatId=id; _scrSelScrId=null;
   scrRenderPatList(); scrRenderScreenList(); scrRenderFlow();
+  _scrUpdateRightSidebar();
 }
+
 function scrAddPattern(){
   var name=prompt('パターン名を入力してください','パターン'+(screenPatterns.length+1));
   if(!name||!name.trim()) return;
@@ -1990,6 +2153,7 @@ function scrAddPattern(){
   _scrCurrentPatId=p.id;
   scrRenderAll(); scrSaveData(); markDirty();
 }
+
 function scrDelPat(id){
   if(!confirm('このパターンを削除しますか？')) return;
   screenPatterns=screenPatterns.filter(function(p){return p.id!==id;});
@@ -2005,18 +2169,15 @@ function scrRenderScreenList(){
   if(!pat||!pat.screens||!pat.screens.length){
     el.innerHTML='';
     var hint=document.getElementById('scrDndHint');
-    if(hint) hint.style.display='block';
-    return;
+    if(hint) hint.style.display='block'; return;
   }
   var hint=document.getElementById('scrDndHint');
   if(hint) hint.style.display='none';
   var h='';
   pat.screens.forEach(function(s,i){
-    var active=s.id===_scrCurrentScrId?' active':'';
-    var thumb=s.imageSrc
-      ?'<img src="'+s.imageSrc+'" alt="">'
-      :'<span style="font-size:14px;">🖼️</span>';
-    h+='<div class="scr-scr-item'+active+'" onclick="scrOpenModal(\''+s.id+'\')">'
+    var active=s.id===_scrSelScrId?' active':'';
+    var thumb=s.imageSrc?'<img src="'+s.imageSrc+'" alt="">':'<span style="font-size:14px;">🖼️</span>';
+    h+='<div class="scr-scr-item'+active+'" onclick="scrSelectScreen(\''+s.id+'\')">'
       +'<div class="scr-scr-thumb">'+thumb+'</div>'
       +'<div style="flex:1;min-width:0;">'
       +'<div style="font-size:9px;color:var(--muted);">SCR-'+String(i+1).padStart(2,'0')+'</div>'
@@ -2027,19 +2188,32 @@ function scrRenderScreenList(){
   });
   el.innerHTML=h;
 }
+
+function scrSelectScreen(scrId){
+  _scrSelScrId=scrId;
+  _scrCropSel=null;
+  scrRenderScreenList();
+  _scrUpdateRightSidebar();
+}
+
 function scrQuickDel(scrId){
   var pat=scrGetPat(); if(!pat) return;
   if(!confirm('この画面を削除しますか？')) return;
   pat.screens=pat.screens.filter(function(s){return s.id!==scrId;});
-  if(_scrCurrentScrId===scrId) _scrCurrentScrId=null;
+  if(_scrSelScrId===scrId){ _scrSelScrId=null; }
   scrRenderScreenList(); scrRenderFlow(); scrSaveData(); markDirty();
+  _scrUpdateRightSidebar();
+}
+
+function scrQuickDelSel(){
+  if(_scrSelScrId) scrQuickDel(_scrSelScrId);
 }
 
 /* ── D&D 画像追加 ── */
 function scrDragOver(e){
   e.preventDefault();
   document.getElementById('scrDndZone').classList.add('drag-over');
-  document.getElementById('scrDndHint').classList.add('drag-over');
+  var h=document.getElementById('scrDndHint'); if(h) h.classList.add('drag-over');
 }
 function scrDragLeave(e){
   e.preventDefault();
@@ -2047,15 +2221,13 @@ function scrDragLeave(e){
   var h=document.getElementById('scrDndHint'); if(h) h.classList.remove('drag-over');
 }
 function scrDrop(e){
-  e.preventDefault();
-  scrDragLeave(e);
+  e.preventDefault(); scrDragLeave(e);
   var files=Array.from(e.dataTransfer.files).filter(function(f){return f.type.startsWith('image/');});
   if(!files.length) return;
   files.forEach(scrReadAndAdd);
 }
 function scrFileAdd(e){
-  Array.from(e.target.files).forEach(scrReadAndAdd);
-  e.target.value='';
+  Array.from(e.target.files).forEach(scrReadAndAdd); e.target.value='';
 }
 function scrReadAndAdd(file){
   var pat=scrGetPat(); if(!pat) return;
@@ -2065,6 +2237,7 @@ function scrReadAndAdd(file){
     var scr={id:_scrGenId(),name:name,imageSrc:ev.target.result,hotspots:[]};
     pat.screens.push(scr);
     scrRenderScreenList(); scrRenderFlow(); scrSaveData(); markDirty();
+    scrSelectScreen(scr.id);
   };
   reader.readAsDataURL(file);
 }
@@ -2082,14 +2255,13 @@ function scrRenderFlow(){
   if(empty) empty.style.display='none';
   var h='';
   screens.forEach(function(s,i){
-    var thumb=s.imageSrc
-      ?'<img src="'+s.imageSrc+'" alt="">'
-      :'<span style="font-size:26px;">🖼️</span>';
+    var thumb=s.imageSrc?'<img src="'+s.imageSrc+'" alt="">':'<span style="font-size:26px;">🖼️</span>';
     var hsCount=(s.hotspots||[]).length;
-    h+='<div class="scr-flow-card" onclick="scrOpenModal(\''+s.id+'\')" title="クリックして編集">'
+    var isActive=s.id===_scrSelScrId;
+    h+='<div class="scr-flow-card'+(isActive?' scr-flow-card-sel':'')+'" onclick="scrSelectScreen(\''+s.id+'\')" title="クリックして選択・編集">'
       +'<div class="scr-flow-thumb">'+thumb+'</div>'
       +'<div class="scr-flow-body">'
-      +'<div class="scr-flow-num">SCR-'+String(i+1).padStart(2,'0')+'</div>'
+      +'<div class="scr-flow-num">SCR-'+String(i+1).padStart(2,'00')+'</div>'
       +'<div class="scr-flow-name">'+esc(s.name||'（名称なし）')+'</div>'
       +(hsCount?'<div class="scr-flow-hs">→ '+hsCount+'件のリンク</div>':'')
       +'</div></div>';
@@ -2100,142 +2272,467 @@ function scrRenderFlow(){
   grid.innerHTML=h;
 }
 
-/* ── 詳細モーダル ── */
-function scrOpenModal(scrId){
+/* ── 右サイドバー ── */
+function _scrUpdateRightSidebar(){
+  var noSel=document.getElementById('scrRsNoSel');
+  var editor=document.getElementById('scrRsEditor');
+  if(!noSel||!editor) return;
+
+  if(!_scrSelScrId){
+    noSel.style.display='flex'; editor.style.display='none'; return;
+  }
   var pat=scrGetPat(); if(!pat) return;
-  var scr=pat.screens.find(function(s){return s.id===scrId;}); if(!scr) return;
-  _scrCurrentScrId=scrId;
-  document.getElementById('scrModalPatId').value=_scrCurrentPatId;
-  document.getElementById('scrModalScrId').value=scrId;
-  document.getElementById('scrModalName').value=scr.name||'';
-  // 画像プレビュー
-  var prev=document.getElementById('scrModalImgPreview');
-  if(prev) prev.innerHTML=scr.imageSrc
-    ?'<img src="'+scr.imageSrc+'" style="max-width:100%;max-height:80px;border-radius:4px;" alt="">'
-    :'<span style="font-size:28px;">📤</span>';
-  scrRenderModalHsList(scr);
-  document.getElementById('scrDetailModal').classList.add('show');
-  scrRenderScreenList(); // アクティブ反映
-}
-function scrCloseModal(){
-  document.getElementById('scrDetailModal').classList.remove('show');
-  _scrCurrentScrId=null;
-  scrRenderScreenList();
+  var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;});
+  if(!scr){ noSel.style.display='flex'; editor.style.display='none'; return; }
+
+  noSel.style.display='none'; editor.style.display='flex';
+  document.getElementById('scrRsName').value=scr.name||'';
+  document.getElementById('scrRsMemo').value=scr.note||'';
+
+  _scrRsShowImage(scr);
+  _scrRsRenderHsList(scr);
+  _scrRsUpdateModeSections();
 }
 
-/* ── ホットスポット（メールテンプレートジャンプ対応） ── */
-function scrRenderModalHsList(scr){
-  var el=document.getElementById('scrHsList'); if(!el) return;
+function _scrRsShowImage(scr){
+  var ph=document.getElementById('scrRsImgPlaceholder');
+  var ca=document.getElementById('scrRsImgCanvas');
+  var ub=document.getElementById('scrRsUploadBtn');
+  var rb=document.getElementById('scrRsResizeBtn');
+  var origSz=document.getElementById('scrCropOrigSize');
+
+  if(!scr||!scr.imageSrc){
+    if(ph) ph.style.display='flex';
+    if(ca) ca.style.display='none';
+    if(ub) ub.style.display='none';
+    if(rb) rb.style.display='none';
+    return;
+  }
+  if(ph) ph.style.display='none';
+  if(ca) ca.style.display='block';
+  if(ub) ub.style.display='inline-flex';
+  if(rb){ rb.style.display='flex'; rb.style.display='flex'; }
+
+  var img=document.getElementById('scrRsImg');
+  if(img){
+    img.onload=function(){
+      _scrResizeOverlay();
+      _scrDrawOverlay(null,false);
+      if(origSz) origSz.textContent='元: '+img.naturalWidth+' × '+img.naturalHeight+' px';
+      var cw=document.getElementById('scrCropW');
+      var ch=document.getElementById('scrCropH');
+      if(cw&&!cw.value) cw.value=img.naturalWidth;
+      if(ch&&!ch.value) ch.value=img.naturalHeight;
+    };
+    img.src=scr.imageSrc;
+  }
+}
+
+/* ── オーバーレイキャンバス ── */
+function _scrResizeOverlay(){
+  var img=document.getElementById('scrRsImg');
+  var ov=document.getElementById('scrRsOverlay');
+  if(!img||!ov) return;
+  // clientWidth/Height が 0 なら requestAnimationFrame で再試行
+  if(img.offsetWidth===0){
+    requestAnimationFrame(_scrResizeOverlay); return;
+  }
+  ov.width=img.offsetWidth;
+  ov.height=img.offsetHeight;
+  ov.style.width=img.offsetWidth+'px';
+  ov.style.height=img.offsetHeight+'px';
+}
+
+function _scrDrawOverlay(previewRect, isPreview){
+  var ov=document.getElementById('scrRsOverlay');
+  var img=document.getElementById('scrRsImg');
+  if(!ov||!img) return;
+  if(ov.width!==img.offsetWidth||ov.height!==img.offsetHeight) _scrResizeOverlay();
+  var W=ov.width, H=ov.height;
+  var ctx=ov.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  var pat=scrGetPat();
+  var scr=pat?pat.screens.find(function(s){return s.id===_scrSelScrId;}):null;
+
+  // ホットスポット描画（常に）
+  if(scr&&scr.hotspots){
+    scr.hotspots.forEach(function(hs,i){
+      ctx.strokeStyle='rgba(37,99,235,0.85)';
+      ctx.fillStyle='rgba(37,99,235,0.12)';
+      ctx.lineWidth=2;
+      ctx.setLineDash([]);
+      ctx.strokeRect(hs.x*W,hs.y*H,hs.w*W,hs.h*H);
+      ctx.fillRect(hs.x*W,hs.y*H,hs.w*W,hs.h*H);
+      ctx.fillStyle='rgba(37,99,235,0.9)';
+      ctx.fillRect(hs.x*W,hs.y*H,28,14);
+      ctx.fillStyle='#fff';
+      ctx.font='bold 9px sans-serif';
+      ctx.fillText('HS-'+(i+1),hs.x*W+3,hs.y*H+10);
+    });
+  }
+
+  // トリミング選択描画
+  if(_scrEditMode==='crop'&&_scrCropSel&&!isPreview){
+    var cs=_scrCropSel;
+    ctx.fillStyle='rgba(0,0,0,0.42)';
+    ctx.fillRect(0,0,W,H);
+    ctx.clearRect(cs.x*W,cs.y*H,cs.w*W,cs.h*H);
+    // ホットスポット再描画（クロップ領域内）
+    if(scr&&scr.hotspots){
+      scr.hotspots.forEach(function(hs,i){
+        ctx.strokeStyle='rgba(37,99,235,0.85)';
+        ctx.lineWidth=1.5;
+        ctx.setLineDash([3,3]);
+        ctx.strokeRect(hs.x*W,hs.y*H,hs.w*W,hs.h*H);
+        ctx.setLineDash([]);
+      });
+    }
+    ctx.strokeStyle='#fff';
+    ctx.lineWidth=2;
+    ctx.setLineDash([5,5]);
+    ctx.strokeRect(cs.x*W,cs.y*H,cs.w*W,cs.h*H);
+    ctx.setLineDash([]);
+    // サイズ表示
+    var nw=Math.round(cs.w*img.naturalWidth), nh=Math.round(cs.h*img.naturalHeight);
+    ctx.fillStyle='rgba(0,0,0,0.7)';
+    ctx.fillRect(cs.x*W,cs.y*H+cs.h*H-18,70,18);
+    ctx.fillStyle='#fff';
+    ctx.font='10px monospace';
+    ctx.fillText(nw+'×'+nh+'px',cs.x*W+4,cs.y*H+cs.h*H-5);
+  }
+
+  // プレビュー矩形（ドラッグ中）
+  if(previewRect){
+    var pr=previewRect;
+    if(_scrEditMode==='hotspot'){
+      ctx.strokeStyle='rgba(37,99,235,0.9)';
+      ctx.fillStyle='rgba(37,99,235,0.15)';
+      ctx.lineWidth=2;
+      ctx.setLineDash([]);
+      ctx.strokeRect(pr.x*W,pr.y*H,pr.w*W,pr.h*H);
+      ctx.fillRect(pr.x*W,pr.y*H,pr.w*W,pr.h*H);
+    } else {
+      ctx.fillStyle='rgba(0,0,0,0.42)';
+      ctx.fillRect(0,0,W,H);
+      ctx.clearRect(pr.x*W,pr.y*H,pr.w*W,pr.h*H);
+      ctx.strokeStyle='#fff';
+      ctx.lineWidth=2;
+      ctx.setLineDash([5,5]);
+      ctx.strokeRect(pr.x*W,pr.y*H,pr.w*W,pr.h*H);
+      ctx.setLineDash([]);
+      // サイズ表示
+      var img2=document.getElementById('scrRsImg');
+      if(img2){
+        var nw2=Math.round(pr.w*img2.naturalWidth), nh2=Math.round(pr.h*img2.naturalHeight);
+        ctx.fillStyle='rgba(0,0,0,0.7)';
+        ctx.fillRect(pr.x*W,pr.y*H+pr.h*H-18,70,18);
+        ctx.fillStyle='#fff';
+        ctx.font='10px monospace';
+        ctx.fillText(nw2+'×'+nh2+'px',pr.x*W+4,pr.y*H+pr.h*H-5);
+      }
+    }
+  }
+}
+
+/* ── オーバーレイイベント（1回のみ初期化） ── */
+var _scrOvInited=false;
+function _scrInitOverlayEvents(){
+  if(_scrOvInited) return;
+  _scrOvInited=true;
+  var ov=document.getElementById('scrRsOverlay');
+  if(!ov) return;
+
+  ov.addEventListener('mousedown',function(e){
+    if(!_scrSelScrId) return;
+    var r=ov.getBoundingClientRect();
+    var rx=(e.clientX-r.left)/r.width;
+    var ry=(e.clientY-r.top)/r.height;
+    _scrHsDrawing=true;
+    _scrHsDrawStart={rx:rx,ry:ry};
+    e.preventDefault();
+  });
+
+  ov.addEventListener('mousemove',function(e){
+    if(!_scrHsDrawing||!_scrHsDrawStart) return;
+    var r=ov.getBoundingClientRect();
+    var rx=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+    var ry=Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));
+    var x=Math.min(rx,_scrHsDrawStart.rx), y=Math.min(ry,_scrHsDrawStart.ry);
+    var w=Math.abs(rx-_scrHsDrawStart.rx), h=Math.abs(ry-_scrHsDrawStart.ry);
+    _scrDrawOverlay({x:x,y:y,w:w,h:h}, true);
+  });
+
+  ov.addEventListener('mouseup',function(e){
+    if(!_scrHsDrawing||!_scrHsDrawStart) return;
+    _scrHsDrawing=false;
+    var r=ov.getBoundingClientRect();
+    var rx=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+    var ry=Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));
+    var x=Math.min(rx,_scrHsDrawStart.rx), y=Math.min(ry,_scrHsDrawStart.ry);
+    var w=Math.abs(rx-_scrHsDrawStart.rx), h=Math.abs(ry-_scrHsDrawStart.ry);
+    _scrHsDrawStart=null;
+    if(w<0.01||h<0.01){ _scrDrawOverlay(null,false); return; }
+
+    if(_scrEditMode==='hotspot'){
+      var pat=scrGetPat(); if(!pat) return;
+      var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;}); if(!scr) return;
+      if(!scr.hotspots) scr.hotspots=[];
+      scr.hotspots.push({id:_scrGenId(),x:x,y:y,w:w,h:h,targetId:'',targetType:'screen',note:''});
+      scrSaveData(); markDirty();
+      _scrRsRenderHsList(scr);
+      _scrDrawOverlay(null,false);
+      scrRenderFlow();
+    } else { // crop
+      _scrCropSel={x:x,y:y,w:w,h:h};
+      var img=document.getElementById('scrRsImg');
+      if(img){
+        var nw=Math.round(w*img.naturalWidth), nh=Math.round(h*img.naturalHeight);
+        document.getElementById('scrCropW').value=nw;
+        document.getElementById('scrCropH').value=nh;
+      }
+      var ab=document.getElementById('scrApplyCropBtn');
+      if(ab) ab.style.display='inline-flex';
+      _scrDrawOverlay(null,false);
+    }
+  });
+
+  ov.addEventListener('mouseleave',function(){
+    if(_scrHsDrawing){ _scrHsDrawing=false; _scrHsDrawStart=null; _scrDrawOverlay(null,false); }
+  });
+}
+
+/* ── ホットスポットリスト ── */
+function _scrRsRenderHsList(scr){
+  var el=document.getElementById('scrRsHsList');
+  var hint=document.getElementById('scrRsHsHint');
+  if(!el) return;
+
+  if(!scr||!scr.imageSrc){
+    if(hint) hint.style.display='none';
+    el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:4px 0;">先に画像をアップロードしてください</div>';
+    return;
+  }
+  if(hint) hint.style.display=(_scrEditMode==='hotspot')?'block':'none';
+
   if(!scr.hotspots||!scr.hotspots.length){
     el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:4px 0;">ホットスポットなし</div>';
     return;
   }
+
   var mailTpls=[];
   try{ var ms=localStorage.getItem('mailTemplates'); if(ms) mailTpls=JSON.parse(ms); }catch(e){}
   var pat=scrGetPat();
-  var otherScreens=(pat.screens||[]).filter(function(s){return s.id!==scr.id;});
+  var otherScreens=(pat?pat.screens:[]).filter(function(s){return s.id!==scr.id;});
+
   var h='';
-  (scr.hotspots||[]).forEach(function(hs,hi){
-    // 画面リンクとメールリンクの option 生成
+  scr.hotspots.forEach(function(hs,hi){
+    var isMail=hs.targetType==='mail';
     var screenOpts=otherScreens.map(function(s){
-      return '<option value="'+s.id+'"'+(hs.target===s.id?' selected':'')+'>'+esc(s.name||'（名称なし）')+'</option>';
+      return '<option value="'+s.id+'"'+(!isMail&&hs.targetId===s.id?' selected':'')+'>'+esc(s.name||'（名称なし）')+'</option>';
     }).join('');
     var mailOpts=mailTpls.map(function(t){
-      var v='mail:'+t.id;
-      return '<option value="'+v+'"'+(hs.target===v?' selected':'')+'>✉️ '+esc(t.title||t.subject||t.id)+'</option>';
+      return '<option value="'+t.id+'"'+(isMail&&hs.targetId===t.id?' selected':'')+'>✉️ '+esc(t.title||t.id)+'</option>';
     }).join('');
-    h+='<div class="scr-hs-row">'
-      +'<span style="font-size:10px;color:var(--muted);flex-shrink:0;min-width:36px;">HS-'+(hi+1)+'</span>'
-      +'<select class="scr-hs-sel" onchange="scrHsSet('+hi+',\'target\',this.value)">'
-      +'<option value="">— リンク先を選択 —</option>'
-      +(screenOpts?'<optgroup label="🖥 画面">'+screenOpts+'</optgroup>':'')
-      +(mailOpts?'<optgroup label="✉️ メールテンプレート">'+mailOpts+'</optgroup>':'')
-      +'</select>'
-      +'<input type="text" class="scr-hs-sel" style="width:90px;flex-shrink:0;" placeholder="メモ" '
-      +'value="'+esc(hs.note||'')+'" oninput="scrHsSet('+hi+',\'note\',this.value)">'
-      +'<button onclick="scrDelHotspot('+hi+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;" title="削除">✕</button>'
+    var selBg='background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700;';
+    var unselBg='background:var(--surface);color:var(--text);border:1px solid var(--border);';
+    h+='<div class="scr-hs-row" style="flex-direction:column;gap:5px;padding:8px;border-radius:6px;">'
+      +'<div style="display:flex;align-items:center;gap:6px;">'
+      +'<span style="font-size:10px;color:var(--muted);font-weight:700;flex-shrink:0;font-family:monospace;">HS-'+(hi+1).toString().padStart(2,'0')+'</span>'
+      +'<button onclick="_scrRsDelHs('+hi+')" style="margin-left:auto;background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;" title="削除">✕</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:4px;">'
+      +'<button onclick="_scrRsSetHsType('+hi+',\'screen\')" style="flex:1;height:26px;font-size:11px;border-radius:4px;cursor:pointer;font-family:inherit;'+((!isMail)?selBg:unselBg)+'">🖥 画面</button>'
+      +'<button onclick="_scrRsSetHsType('+hi+',\'mail\')" style="flex:1;height:26px;font-size:11px;border-radius:4px;cursor:pointer;font-family:inherit;'+(isMail?selBg:unselBg)+'">✉️ メール</button>'
+      +'</div>'
+      +'<select class="scr-hs-sel" style="display:'+(!isMail?'block':'none')+'" onchange="_scrRsHsSet('+hi+',\'targetId\',this.value)">'
+      +'<option value="">— 画面を選択 —</option>'+screenOpts+'</select>'
+      +'<select class="scr-hs-sel" style="display:'+(isMail?'block':'none')+'" onchange="_scrRsHsSet('+hi+',\'targetId\',this.value)">'
+      +'<option value="">— メールテンプレートを選択 —</option>'+mailOpts+'</select>'
+      +'<input type="text" class="scr-hs-sel" placeholder="メモ（任意）" value="'+esc(hs.note||'')+'" oninput="_scrRsHsSet('+hi+',\'note\',this.value)" style="width:100%;box-sizing:border-box;">'
       +'</div>';
   });
   el.innerHTML=h;
 }
-function scrHsSet(idx,field,val){
+
+function _scrRsHsSet(idx,field,val){
   var pat=scrGetPat(); if(!pat) return;
-  var scr=pat.screens.find(function(s){return s.id===_scrCurrentScrId;}); if(!scr||!scr.hotspots[idx]) return;
+  var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;}); if(!scr||!scr.hotspots[idx]) return;
   scr.hotspots[idx][field]=val;
+  scrSaveData(); markDirty(); scrRenderFlow();
 }
-function scrAddHotspot(){
+
+function _scrRsSetHsType(idx,type){
   var pat=scrGetPat(); if(!pat) return;
-  var scr=pat.screens.find(function(s){return s.id===_scrCurrentScrId;}); if(!scr) return;
-  if(!scr.hotspots) scr.hotspots=[];
-  scr.hotspots.push({id:_scrGenId(),target:'',note:''});
-  scrRenderModalHsList(scr);
+  var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;}); if(!scr||!scr.hotspots[idx]) return;
+  scr.hotspots[idx].targetType=type; scr.hotspots[idx].targetId='';
+  scrSaveData(); markDirty();
+  _scrRsRenderHsList(scr); _scrDrawOverlay(null,false); scrRenderFlow();
 }
-function scrDelHotspot(idx){
+
+function _scrRsDelHs(idx){
   var pat=scrGetPat(); if(!pat) return;
-  var scr=pat.screens.find(function(s){return s.id===_scrCurrentScrId;}); if(!scr) return;
+  var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;}); if(!scr) return;
   scr.hotspots.splice(idx,1);
-  scrRenderModalHsList(scr);
+  scrSaveData(); markDirty();
+  _scrRsRenderHsList(scr); _scrDrawOverlay(null,false); scrRenderFlow();
 }
-function scrSaveModal(){
+
+/* ── 右サイドバー: 更新ハンドラ ── */
+function scrRsUpdateName(){
   var pat=scrGetPat(); if(!pat) return;
-  var scrId=document.getElementById('scrModalScrId').value;
-  var scr=pat.screens.find(function(s){return s.id===scrId;}); if(!scr) return;
-  var newName=document.getElementById('scrModalName').value.trim();
-  scr.name=newName||'（名称なし）';
-  scrCloseModal();
-  scrRenderFlow(); scrSaveData(); markDirty();
-  toast('✅ 画面を保存しました');
+  var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;}); if(!scr) return;
+  scr.name=document.getElementById('scrRsName').value||'';
+  scrRenderScreenList(); scrRenderFlow(); scrSaveData(); markDirty();
 }
-function scrDeleteScreen(){
-  var scrId=document.getElementById('scrModalScrId').value;
-  if(!confirm('この画面を削除しますか？')) return;
+
+function scrRsUpdateMemo(){
   var pat=scrGetPat(); if(!pat) return;
-  pat.screens=pat.screens.filter(function(s){return s.id!==scrId;});
-  _scrCurrentScrId=null;
-  scrCloseModal();
-  scrRenderFlow(); scrSaveData(); markDirty();
+  var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;}); if(!scr) return;
+  scr.note=document.getElementById('scrRsMemo').value||'';
+  scrSaveData(); markDirty();
 }
-function scrModalImgChange(e){
+
+/* ── 画像アップロード（右サイドバー） ── */
+function scrRsImgUpload(e){
   var file=e.target.files[0]; if(!file) return;
+  var pat=scrGetPat(); if(!pat) return;
+  var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;}); if(!scr) return;
   var reader=new FileReader();
   reader.onload=function(ev){
-    var pat=scrGetPat(); if(!pat) return;
-    var scrId=document.getElementById('scrModalScrId').value;
-    var scr=pat.screens.find(function(s){return s.id===scrId;}); if(!scr) return;
     scr.imageSrc=ev.target.result;
-    var prev=document.getElementById('scrModalImgPreview');
-    if(prev) prev.innerHTML='<img src="'+ev.target.result+'" style="max-width:100%;max-height:80px;border-radius:4px;" alt="">';
+    // W/H 入力をリセット
+    var cw=document.getElementById('scrCropW'); if(cw) cw.value='';
+    var ch=document.getElementById('scrCropH'); if(ch) ch.value='';
+    _scrCropSel=null;
+    _scrRsShowImage(scr);
+    scrRenderScreenList(); scrRenderFlow(); scrSaveData(); markDirty();
   };
-  reader.readAsDataURL(file);
-  e.target.value='';
+  reader.readAsDataURL(file); e.target.value='';
 }
-function scrModalImgDrop(e){
+
+function scrRsImgDrop(e){
   var files=Array.from(e.dataTransfer.files).filter(function(f){return f.type.startsWith('image/');});
   if(!files.length) return;
+  var pat=scrGetPat(); if(!pat) return;
+  var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;}); if(!scr) return;
   var reader=new FileReader();
   reader.onload=function(ev){
-    var pat=scrGetPat(); if(!pat) return;
-    var scrId=document.getElementById('scrModalScrId').value;
-    var scr=pat.screens.find(function(s){return s.id===scrId;}); if(!scr) return;
     scr.imageSrc=ev.target.result;
-    var prev=document.getElementById('scrModalImgPreview');
-    if(prev) prev.innerHTML='<img src="'+ev.target.result+'" style="max-width:100%;max-height:80px;border-radius:4px;" alt="">';
+    var cw=document.getElementById('scrCropW'); if(cw) cw.value='';
+    var ch=document.getElementById('scrCropH'); if(ch) ch.value='';
+    _scrCropSel=null;
+    _scrRsShowImage(scr);
+    scrRenderScreenList(); scrRenderFlow(); scrSaveData(); markDirty();
   };
   reader.readAsDataURL(files[0]);
 }
 
-// モーダル外クリック・ESC で閉じる
-document.addEventListener('click',function(e){
-  if(e.target===document.getElementById('scrDetailModal')) scrCloseModal();
-});
-document.addEventListener('keydown',function(e){
-  if(e.key==='Escape'&&document.getElementById('scrDetailModal').classList.contains('show')) scrCloseModal();
-});
+/* ── モード切替 ── */
+function scrSetEditMode(mode){
+  _scrEditMode=mode;
+  var bH=document.getElementById('scrModeHotspot');
+  var bC=document.getElementById('scrModeCrop');
+  if(bH) bH.classList.toggle('active',mode==='hotspot');
+  if(bC) bC.classList.toggle('active',mode==='crop');
+  if(mode!=='crop'){ _scrCropSel=null; var ab=document.getElementById('scrApplyCropBtn'); if(ab) ab.style.display='none'; }
+  _scrRsUpdateModeSections();
+  var pat=scrGetPat();
+  var scr=pat?pat.screens.find(function(s){return s.id===_scrSelScrId;}):null;
+  if(scr) _scrRsRenderHsList(scr);
+  _scrDrawOverlay(null,false);
+}
+
+function _scrRsUpdateModeSections(){
+  var cs=document.getElementById('scrCropSec');
+  if(cs) cs.style.display=(_scrEditMode==='crop')?'block':'none';
+  var ov=document.getElementById('scrRsOverlay');
+  if(ov) ov.style.cursor='crosshair';
+}
+
+/* ── リサイズ / トリミング ── */
+function scrApplyResize(){
+  var pat=scrGetPat(); if(!pat) return;
+  var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;}); if(!scr||!scr.imageSrc) return;
+  var img=document.getElementById('scrRsImg'); if(!img) return;
+  var w=parseInt(document.getElementById('scrCropW').value)||img.naturalWidth;
+  var h=parseInt(document.getElementById('scrCropH').value)||img.naturalHeight;
+  if(w<1||h<1){ toast('⚠️ 有効なサイズを入力してください'); return; }
+  var tmpImg=new Image();
+  tmpImg.onload=function(){
+    var out=document.createElement('canvas');
+    out.width=w; out.height=h;
+    out.getContext('2d').drawImage(tmpImg,0,0,w,h);
+    scr.imageSrc=out.toDataURL('image/jpeg',0.9);
+    var cw=document.getElementById('scrCropW'); if(cw) cw.value=w;
+    var ch=document.getElementById('scrCropH'); if(ch) ch.value=h;
+    _scrCropSel=null;
+    var ab=document.getElementById('scrApplyCropBtn'); if(ab) ab.style.display='none';
+    _scrRsShowImage(scr);
+    scrRenderScreenList(); scrRenderFlow(); scrSaveData(); markDirty();
+    toast('✅ リサイズしました（'+w+'×'+h+'px）');
+  };
+  tmpImg.src=scr.imageSrc;
+}
+
+function scrApplyCropSel(){
+  if(!_scrCropSel){ toast('⚠️ 画像上でドラッグしてトリミング範囲を選択してください'); return; }
+  var pat=scrGetPat(); if(!pat) return;
+  var scr=pat.screens.find(function(s){return s.id===_scrSelScrId;}); if(!scr||!scr.imageSrc) return;
+  var img=document.getElementById('scrRsImg'); if(!img) return;
+  var iw=img.naturalWidth, ih=img.naturalHeight;
+  var cs=_scrCropSel;
+  var ow=Math.max(1,Math.round(cs.w*iw)), oh=Math.max(1,Math.round(cs.h*ih));
+  var tmpImg=new Image();
+  tmpImg.onload=function(){
+    var out=document.createElement('canvas');
+    out.width=ow; out.height=oh;
+    out.getContext('2d').drawImage(tmpImg,cs.x*iw,cs.y*ih,cs.w*iw,cs.h*ih,0,0,ow,oh);
+    scr.imageSrc=out.toDataURL('image/jpeg',0.9);
+    _scrCropSel=null;
+    var ab=document.getElementById('scrApplyCropBtn'); if(ab) ab.style.display='none';
+    var cw=document.getElementById('scrCropW'); if(cw) cw.value=ow;
+    var ch=document.getElementById('scrCropH'); if(ch) ch.value=oh;
+    _scrRsShowImage(scr);
+    scrRenderScreenList(); scrRenderFlow(); scrSaveData(); markDirty();
+    toast('✅ トリミングしました（'+ow+'×'+oh+'px）');
+  };
+  tmpImg.src=scr.imageSrc;
+}
+
+function scrCropSelClear(){
+  _scrCropSel=null;
+  var ab=document.getElementById('scrApplyCropBtn'); if(ab) ab.style.display='none';
+  _scrDrawOverlay(null,false);
+}
+
+/* ── 旧モーダル互換スタブ ── */
+function scrOpenModal(scrId){ scrSelectScreen(scrId); }
+function scrCloseModal(){}
+function scrSaveModal(){ toast('✅ 変更は自動保存されます'); }
+function scrDeleteScreen(){ if(_scrSelScrId) scrQuickDel(_scrSelScrId); }
+function scrRenderModalHsList(){}
+function scrHsSet(){}
+function scrAddHotspot(){}
+function scrDelHotspot(){}
+function scrModalImgChange(){}
+function scrModalImgDrop(){}
 
 /* ── データ保存 ── */
 function scrSaveData(){
   try{ localStorage.setItem('screenFlowData',JSON.stringify(screenPatterns)); }catch(e){}
 }
+
+// ウィンドウリサイズ時にオーバーレイを再描画
+window.addEventListener('resize',function(){
+  if(_scrSelScrId){
+    setTimeout(function(){
+      _scrResizeOverlay();
+      _scrDrawOverlay(null,false);
+    },100);
+  }
+});
+
 
 // DOMContentLoaded 後に更新履歴タブの初期描画
 document.addEventListener('DOMContentLoaded', function(){

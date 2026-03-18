@@ -2737,3 +2737,138 @@ html[data-theme="dark"] .page-admin #toast { background: var(--text); color: var
   html:not([data-theme]) .page-admin .sub-cat-header .cat-name-input { color: var(--text); }
   html:not([data-theme]) .page-admin .script-item-name { color: var(--text); }
 }
+
+/* ============================================================
+   画面遷移エディタ 右サイドバー / ズームコントロール 追加CSS
+   ============================================================ */
+
+/* 右サイドバー */
+.scr-right-sidebar {
+  width: 400px;
+  min-width: 400px;
+  max-width: 400px;
+  background: var(--white);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* セクション */
+.scr-rs-sec {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.scr-rs-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 8px;
+}
+.scr-rs-field {
+  margin-bottom: 8px;
+}
+.scr-rs-field:last-child { margin-bottom: 0; }
+
+/* モード切替ボタン */
+.scr-mode-btn {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  background: var(--surface2);
+  color: var(--text2);
+  transition: all .12s;
+  white-space: nowrap;
+}
+.scr-mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.scr-mode-btn:not(.active):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ズームボタン */
+.scr-zoom-btn {
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--text2);
+  border-radius: 5px;
+  transition: background .12s;
+  font-weight: 600;
+  line-height: 1;
+}
+.scr-zoom-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+#scrZoomLbl {
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 44px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* フローカード 選択状態 */
+.scr-flow-card-sel {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent) !important;
+}
+
+/* ホットスポット行（右サイドバー） */
+.scr-hs-row + .scr-hs-row {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 6px;
+}
+
+/* パターン名インライン編集 */
+.scr-pat-name-inp {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 12px;
+  font-family: inherit;
+  background: var(--white);
+  color: var(--text);
+  outline: none;
+}
+
+/* ダークモード */
+html[data-theme="dark"] .scr-right-sidebar {
+  background: var(--surface);
+  border-left-color: var(--border);
+}
+html[data-theme="dark"] .scr-rs-sec {
+  border-bottom-color: var(--border);
+}
+html[data-theme="dark"] .scr-mode-btn {
+  background: var(--surface2);
+  color: var(--text2);
+  border-color: var(--border);
+}
+html[data-theme="dark"] #scrRsImgArea {
+  border-color: var(--border);
+}
+html[data-theme="dark"] .scr-zoom-btn:hover {
+  background: var(--surface2);
+}
