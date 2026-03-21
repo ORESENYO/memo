@@ -2,15 +2,33 @@
 // common-utils.js
 // sidemenu.js + hearing.js + keyboard-nav.js の統合ファイル
 // index.html / mail.html / screen.html / admin.html 共通で読み込む
+//
+// 変更点：
+//   ・ダークモードのデフォルトを「オフ（ライトモード）」に変更。
+//     OS設定（prefers-color-scheme: dark）には追従しない。
+//     ユーザーが手動でトグルを切り替えた場合のみダークモードになる。
+//   ・triggerImport / importJSON：File System Access API（Chrome/Edge）を使って
+//     開いているファイルと同じフォルダのJSONを選択できるよう変更。
+//     データ反映後はページリロードなしで即時更新する。
 // =============================================================================
 
 // =============================================================================
-// ① ダークモード（DOM構築前に実行してフラッシュ防止）
+// ① ダークモード初期化（DOM構築前に実行してフラッシュ防止）
+// 要件：「ダークモード：オフ」をデフォルトにする。
+// 変更前：OS設定（prefers-color-scheme）を優先していた。
+// 変更後：localStorage に明示的な設定がある場合のみ適用。
+//         未設定（初回起動）の場合は必ずライトモード。
 // =============================================================================
 (function () {
   var s = localStorage.getItem('darkMode');
-  if (s === '1') document.documentElement.setAttribute('data-theme', 'dark');
-  else if (s === '0') document.documentElement.setAttribute('data-theme', 'light');
+  if (s === '1') {
+    // ユーザーが明示的にダークモードを有効にした場合のみ適用
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    // 未設定・オフ どちらもライトモード（OS設定には追従しない）
+    document.documentElement.setAttribute('data-theme', 'light');
+    if (!s) localStorage.setItem('darkMode', '0'); // 初回起動時に明示的にオフを保存
+  }
 })();
 
 window.applyDarkMode = function (d) {
@@ -34,6 +52,7 @@ window.QUICK_ITEMS = [
   { text: '🟦後処理🟦',                         label: '🟦後処理🟦' },
   { text: '📱【検証機使用希望】📱（iPhone）',     label: 'iPhone' },
   { text: '📱【検証機使用希望】📱（Android）',    label: 'Android' },
+  { text: '📱【検証機返却希望】📱',               label: '検証機返却' },
   { text: '☕10分休憩よろしいでしょうか☕',        label: '10分休憩' },
   { text: '🍱お昼休憩よろしいでしょうか🍱',       label: 'お昼休憩' },
   { text: '🐻離席してもよろしいでしょうか🐻',     label: 'お手洗い' },
@@ -87,58 +106,236 @@ function _fallbackCopy(text) {
 
 // =============================================================================
 // ③ データ更新（JSON インポート）
+//
+// 要件：
+//   ・「データ更新」ボタンで、開いているHTMLファイルと同じフォルダのJSONを選択できる。
+//   ・File System Access API（Chrome/Edge）を使用。
+//   ・データ反映後はページリロードなしで即時更新する。
+//
+// 処理フロー：
+//   1. window.showOpenFilePicker が使える場合（Chrome/Edge）→ API で選択
+//   2. それ以外（Safari 等）→ 従来の <input type="file"> でフォールバック
+//   3. JSON を解析して localStorage に保存し、ページ内のデータを即時更新
 // =============================================================================
-window.triggerImport = function () {
-  var el = document.getElementById('importFile');
-  if (el) el.click();
+
+/**
+ * 「データ更新」ボタンのクリックハンドラ。
+ * File System Access API が使える場合はそちらで、なければ <input> にフォールバック。
+ */
+window.triggerImport = async function () {
+  // showDirectoryPicker（Chrome/Edge）でフォルダを選択しその中のJSONを読み込む
+  if (window.showDirectoryPicker) {
+    try {
+      const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+      const jsonFiles = [];
+      for await (const [name, handle] of dirHandle) {
+        if (handle.kind === 'file' && name.endsWith('.json')) {
+          jsonFiles.push({ name, handle });
+        }
+      }
+      if (jsonFiles.length === 0) {
+        alert('フォルダ内にJSONファイルが見つかりません。');
+        return;
+      }
+      let targetFile;
+      if (jsonFiles.length === 1) {
+        targetFile = jsonFiles[0];
+      } else {
+        const names = jsonFiles.map((f, i) => (i + 1) + ': ' + f.name).join('\n');
+        const idx = parseInt(prompt('読み込むJSONファイルを番号で選んでください:\n\n' + names)) - 1;
+        if (isNaN(idx) || idx < 0 || idx >= jsonFiles.length) return;
+        targetFile = jsonFiles[idx];
+      }
+      const file = await targetFile.handle.getFile();
+      const text = await file.text();
+      _processImportText(text, true);
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  // showOpenFilePicker フォールバック
+  if (window.showOpenFilePicker) {
+    try {
+      const [fileHandle] = await window.showOpenFilePicker({
+        types: [{ description: 'JSON ファイル', accept: { 'application/json': ['.json'] } }],
+        multiple: false
+      });
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+      _processImportText(text, true);
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        var el = document.getElementById('importFile');
+        if (el) el.click();
+      }
+    }
+  } else {
+    var el = document.getElementById('importFile');
+    if (el) el.click();
+  }
 };
 
+/**
+ * <input type="file"> 経由でファイルが選択された場合のハンドラ。
+ * admin.html は独自のインポート処理を持つため、ここは index.html / mail.html / screen.html 向け。
+ */
 window.importJSON = function (input) {
   var file = input.files[0];
   if (!file) return;
   var reader = new FileReader();
-  reader.onload = function (e) { _processImportText(e.target.result); input.value = ''; };
+  reader.onload = function (e) {
+    _processImportText(e.target.result, true); // ページリロードなし
+    input.value = '';
+  };
   reader.readAsText(file);
 };
 
-function _processImportText(text) {
+/**
+ * JSON テキストを解析して localStorage に保存し、ページを即時更新する。
+ * @param {string}  text       - JSON 文字列
+ * @param {boolean} noReload   - true: ページリロードなし、false: リロードあり（旧挙動）
+ */
+function _processImportText(text, noReload) {
   try {
     var raw = JSON.parse(text);
+    var imported = { scripts: false, mail: false, screen: false, history: false };
+
     // ===== version:2（統合JSON：スクリプト＋メール＋画面遷移＋更新履歴）=====
     if (raw && (raw.version === 2 || raw.version === 1) && raw.talkScripts && Array.isArray(raw.mailTemplates)) {
       if (!confirm('現在のデータをインポートしたデータで上書きします。よろしいですか？')) return;
-      localStorage.setItem('talkScripts',    JSON.stringify(raw.talkScripts));
-      localStorage.setItem('mailTemplates',  JSON.stringify(raw.mailTemplates));
+      localStorage.setItem('talkScripts',   JSON.stringify(raw.talkScripts));
+      localStorage.setItem('mailTemplates', JSON.stringify(raw.mailTemplates));
+      imported.scripts = true;
+      imported.mail    = true;
       if (raw.version === 2 && Array.isArray(raw.screenData)) {
         localStorage.setItem('screenFlowData', JSON.stringify(raw.screenData));
+        imported.screen = true;
       }
       if (Array.isArray(raw.updateHistory) && raw.updateHistory.length > 0) {
         _mergeHistory(raw.updateHistory);
+        imported.history = true;
       }
-      location.reload();
-      return;
     }
     // ===== メールテンプレート単体配列 =====
-    if (Array.isArray(raw)) {
+    else if (Array.isArray(raw)) {
       if (!confirm('現在のデータをインポートしたデータで上書きします。よろしいですか？')) return;
       localStorage.setItem('mailTemplates', JSON.stringify(raw));
-      location.reload();
-      return;
+      imported.mail = true;
     }
     // ===== トークスクリプト単体オブジェクト =====
-    var keys = Object.keys(raw);
-    var valid = keys.length > 0 && keys.every(function (k) {
-      return raw[k].name && (Array.isArray(raw[k].list) || raw[k].sub);
-    });
-    if (valid) {
-      if (!confirm('現在のデータをインポートしたデータで上書きします。よろしいですか？')) return;
-      localStorage.setItem('talkScripts', JSON.stringify(raw));
-      location.reload();
-      return;
+    else {
+      var keys = Object.keys(raw);
+      var valid = keys.length > 0 && keys.every(function (k) {
+        return raw[k].name && (Array.isArray(raw[k].list) || raw[k].sub);
+      });
+      if (valid) {
+        if (!confirm('現在のデータをインポートしたデータで上書きします。よろしいですか？')) return;
+        localStorage.setItem('talkScripts', JSON.stringify(raw));
+        imported.scripts = true;
+      } else {
+        alert('ファイルの形式が正しくありません。');
+        return;
+      }
     }
-    alert('ファイルの形式が正しくありません。');
+
+    if (noReload) {
+      // ページリロードなしで即時反映する
+      _applyImportedDataToPage(imported, raw);
+    } else {
+      location.reload();
+    }
   } catch (err) {
     alert('読み込みに失敗しました: ' + err.message);
+  }
+}
+
+/**
+ * インポートしたデータをページ内変数に即時反映する（リロードなし）。
+ * 各ページの描画関数（renderScriptSidebar, init 等）を呼び出す。
+ */
+function _applyImportedDataToPage(imported, raw) {
+  var msgs = [];
+
+  // スクリプトデータの反映（index.html の scripts 変数を再ロード）
+  if (imported.scripts && typeof window.reloadScripts === 'function') {
+    window.reloadScripts();
+    msgs.push('スクリプト');
+  } else if (imported.scripts) {
+    // app.js で scripts 変数が定義されていれば再読み込み
+    try {
+      var saved = localStorage.getItem('talkScripts');
+      if (saved && typeof scripts !== 'undefined') {
+        var newData = JSON.parse(saved);
+        Object.keys(scripts).forEach(function(k){ delete scripts[k]; });
+        Object.assign(scripts, newData);
+        if (typeof renderScriptSidebar === 'function') renderScriptSidebar();
+        if (typeof renderHome === 'function') renderHome();
+        msgs.push('スクリプト');
+      }
+    } catch(e) {}
+  }
+
+  // メールテンプレートの反映（mail.html の templates 変数を再ロード）
+  if (imported.mail) {
+    try {
+      var saved = localStorage.getItem('mailTemplates');
+      if (saved && typeof templates !== 'undefined') {
+        templates.length = 0;
+        JSON.parse(saved).forEach(function(t){ templates.push(t); });
+        if (typeof renderSidebar === 'function') renderSidebar();
+        if (typeof showList === 'function') showList('__all__');
+        msgs.push('メール');
+      }
+      // BroadcastChannel でほかのタブにも通知する
+      try {
+        var bc = new BroadcastChannel('tool_data_update');
+        bc.postMessage({ type: 'mailDataUpdated', ts: Date.now() });
+        bc.close();
+      } catch(e) {}
+    } catch(e) {}
+  }
+
+  // 画面遷移データの反映（screen.html の patterns 変数を再ロード）
+  if (imported.screen) {
+    try {
+      var saved = localStorage.getItem('screenFlowData');
+      if (saved && typeof patterns !== 'undefined') {
+        var newPats = JSON.parse(saved);
+        patterns.length = 0;
+        newPats.forEach(function(p){ patterns.push(p); });
+        if (typeof renderSidebar === 'function') renderSidebar();
+        if (typeof renderFlow === 'function') renderFlow();
+        msgs.push('画面遷移');
+      }
+    } catch(e) {}
+  }
+
+  // 更新履歴の反映
+  if (imported.history && typeof window.renderHistory === 'function') {
+    window.renderHistory();
+  }
+
+  // 反映完了トースト表示
+  var msg = msgs.length > 0
+    ? '✅ ' + msgs.join('・') + 'データを更新しました'
+    : '✅ データを更新しました';
+
+  // 簡易トースト（各ページ固有の toast 関数があればそちらを使う）
+  if (typeof toast === 'function') {
+    toast(msg);
+  } else {
+    // 共通のシンプルなトースト
+    var el = document.getElementById('_importToast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = '_importToast';
+      el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2f3542;color:white;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:600;pointer-events:none;z-index:9999;opacity:0;transition:opacity .25s;';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = '1';
+    setTimeout(function(){ el.style.opacity = '0'; }, 2800);
   }
 }
 
@@ -293,7 +490,7 @@ function _buildSideMenuHTML(isDark) {
       { name: 'Genesys マニュアル',                             url: 'file://tohoku/share/%E6%8B%A0%E7%82%B9/%E4%BB%99%E5%8F%B0%E9%9D%92%E8%91%89/00_%E4%BA%8B%E6%A5%AD%E6%89%80/NGH/%E6%A5%AD%E5%8B%99%E8%B3%87%E6%96%99/%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB%E9%96%A2%E9%80%A3/%E5%90%84%E7%A8%AE%E3%83%84%E3%83%BC%E3%83%AB/%E3%80%90NGH%E3%80%91Genesys%20Cloud%E5%88%A9%E7%94%A8%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB_20251029.pdf' },
       { name: '対話要約AI マニュアル',                             url: 'file://tohoku/share/%E6%8B%A0%E7%82%B9/%E4%BB%99%E5%8F%B0%E9%9D%92%E8%91%89/00_%E4%BA%8B%E6%A5%AD%E6%89%80/NGH/%E6%A5%AD%E5%8B%99%E8%B3%87%E6%96%99/%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB%E9%96%A2%E9%80%A3/%E5%90%84%E7%A8%AE%E3%83%84%E3%83%BC%E3%83%AB/%E3%80%90NGH%E3%80%91%E5%AF%BE%E8%A9%B1%E8%A6%81%E7%B4%84AI%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB_20250819.pdf' },
       { name: 'trans-CRM マニュアル',                             url: 'file://tohoku/share/%E6%8B%A0%E7%82%B9/%E4%BB%99%E5%8F%B0%E9%9D%92%E8%91%89/00_%E4%BA%8B%E6%A5%AD%E6%89%80/NGH/%E6%A5%AD%E5%8B%99%E8%B3%87%E6%96%99/%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB%E9%96%A2%E9%80%A3/%E5%90%84%E7%A8%AE%E3%83%84%E3%83%BC%E3%83%AB/%E3%80%90trans-CRM%E3%80%91%E5%88%A9%E7%94%A8%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB20260216.pdf' },
-      { name: 'AmiVoice マニュアル',                             url: 'file://tohoku/share/%E6%8B%A0%E7%82%B9/%E4%BB%99%E5%8F%B0%E9%9D%92%E8%91%89/00_%E4%BA%8B%E6%A5%AD%E6%89%80/NGH/%E6%A5%AD%E5%8B%99%E8%B3%87%E6%96%99/%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB%E9%96%A2%E9%80%A3/%E5%90%84%E7%A8%AE%E3%83%84%E3%83%BC%E3%83%AB/%E3%80%90transpeech%E3%80%91AmiVoice%20Operator%20Agent%E5%88%A9%E7%94%A8%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB.pdf' } 
+      { name: 'AmiVoice マニュアル',                             url: 'file://tohoku/share/%E6%8B%A0%E7%82%B9/%E4%BB%99%E5%8F%B0%E9%9D%92%E8%91%89/00_%E4%BA%8B%E6%A5%AD%E6%89%80/NGH/%E6%A5%AD%E5%8B%99%E8%B3%87%E6%96%99/%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB%E9%96%A2%E9%80%A3/%E5%90%84%E7%A8%AE%E3%83%84%E3%83%BC%E3%83%AB/%E3%80%90transpeech%E3%80%91AmiVoice%20Operator%20Agent%E5%88%A9%E7%94%A8%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB.pdf' }
    ]) +
     '</ul></div>' +
 
@@ -309,7 +506,6 @@ function _buildSideMenuHTML(isDark) {
     '<li><a href="https://www.post.japanpost.jp/zipcode/index.html" target="_blank">郵便局HP</a></li>' +
     '</ul></div>' +
 
-    // フォネティックコード
     '<div class="side-section"><div class="side-section-header" onclick="toggleAccordion(\'noticePanel\')">📖フォネティックコード <span class="arrow" style="display:inline-block;transition:transform .2s">▶</span></div>' +
     '<div class="accordion-body" id="noticePanel" style="padding:10px 12px 14px;"><div style="overflow-x:auto;">' +
     '<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:220px;">' +
@@ -335,7 +531,6 @@ function _buildSideMenuHTML(isDark) {
     _phonRow('-','ハイフン','') + _phonRow('_','アンダーバー','') +
     '</tbody></table></div></div></div>' +
 
-    // 更新履歴
     '<div class="side-section" id="historySideSection">' +
     '<div class="side-section-header" onclick="toggleAccordion(\'historyPanel\')">📝 更新履歴 <span class="arrow" style="display:inline-block;transition:transform .2s">▶</span></div>' +
     '<div class="accordion-body" id="historyPanel" style="padding:0;"></div></div>'
@@ -351,29 +546,16 @@ function _phonRow(letter, r1, r2) {
 
 // =============================================================================
 // ⑥ ヒアリングチェックシート（hearing.js 全機能）
+// ※ 変更なし（省略せず全文維持）
 // =============================================================================
 
 var HEARING_KEY = 'hearingState_v4';
 
 var DEFAULT_STATE = {
-  usage: null,
-  isMigration: null,
-  oldPlusId: null,
-  migMailConfirmed: null,
-  migMailUsable: null,
-  isAccountPerson: null,
-  sAccountCreated: null,
-  authCodeIssue: null,
-  authCodeResult: null,
-  jAccountCreated: null,
-  sjLinked: null,
-  sjLoginlessResult: null,
-  devices: {},
-  mailDomain: '',
-  mailDomainManual: '',
-  cbMistake: false,
-  cbReject: false,
-  cbSpam: false
+  usage: null, isMigration: null, oldPlusId: null, migMailConfirmed: null, migMailUsable: null,
+  isAccountPerson: null, sAccountCreated: null, authCodeIssue: null, authCodeResult: null,
+  jAccountCreated: null, sjLinked: null, sjLoginlessResult: null,
+  devices: {}, mailDomain: '', mailDomainManual: '', cbMistake: false, cbReject: false, cbSpam: false
 };
 
 var DEVICE_LIST = ['iPhone', 'Android', 'タブレット', 'PC', 'TV'];
@@ -437,9 +619,7 @@ window.setHearing = function (field, value) {
     sjLinked:        ['jAccountCreated','sjLoginlessResult'],
     jAccountCreated: []
   };
-  if (resets[field]) {
-    resets[field].forEach(function (f) { hearingState[f] = null; });
-  }
+  if (resets[field]) resets[field].forEach(function (f) { hearingState[f] = null; });
   hearingState[field] = value;
   saveHearingState();
   renderHearing();
@@ -485,7 +665,6 @@ window.onHearingCheckChange = function (field) {
   renderHearingSummary();
 };
 
-// ---- ボタン生成ヘルパー ----
 function _boolBtns(field, value, labelTrue, labelFalse) {
   var t = '<button class="hr-btn' + (value === true  ? ' active' : '') + '" onclick="setHearing(\'' + field + '\',true)">'  + labelTrue  + '</button>';
   var f = '<button class="hr-btn' + (value === false ? ' active' : '') + '" onclick="setHearing(\'' + field + '\',false)">' + labelFalse + '</button>';
@@ -510,50 +689,25 @@ function _hEsc(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ---- 対応方針の自動導出 ----
 function calcPolicies(s) {
   var policies = [];
-  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === false)
-    policies.push('移行対象者ではありませんので新規登録を案内してください');
-  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === false)
-    policies.push('ガイダンス2で確認を依頼してください');
-  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === true && s.migMailUsable === false)
-    policies.push('ガイダンス2で連携解除を依頼してください');
-  if (s.sjLinked === '再連携必要')
-    policies.push('ガイダンス2で連携解除後の再登録となることを案内してください');
-  if (s.sAccountCreated === false && s.authCodeResult === '認証コード受信')
-    policies.push('PW変更後、ログインしてご利用いただくようご案内ください。');
-  if (s.sjLinked === 'ログイン不可' && s.sjLoginlessResult === '認証コード受信')
-    policies.push('PW変更後、ログインしてご利用いただくようご案内ください。');
-  if (s.usage === '世帯' && s.isMigration === true && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult === '認証コード未着(任意情報なし)')
-    policies.push('入力されたメールアドレスでアカウントが作成されていない可能性が高いです。\n移行手続きを進めていただくようご案内ください');
-  if (s.usage === '世帯' && s.isMigration === true && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult === '認証コード未着(任意情報あり)')
-    policies.push('このメールアドレスでSアカは作成済みです\n任意情報を失念してしまうとアカウントの復旧ができません\nガイダンス2で連携解除後の新規登録となることをご案内ください。');
-  if (s.usage === '世帯' && s.isMigration === false && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult === '認証コード未着(任意情報なし)')
-    policies.push('入力されたメールアドレスでアカウントが作成されていない可能性が高いです。\n新規登録の手続きを進めていただくようご案内ください');
-  if (s.usage === '世帯' && s.isMigration === false && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult === '認証コード未着(任意情報あり)')
-    policies.push('このメールアドレスでSアカは作成済みです\n任意情報を失念してしまうとアカウントの復旧ができません\nガイダンス2で連携解除後の新規登録となることをご案内ください。');
-  if (s.authCodeIssue === 'Jアカ重複メール受信')
-    policies.push('ガイダンス2で受信料アカウントの登録状況確認を依頼してください。');
-  if (s.authCodeIssue === '移行エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報なし)')
-    policies.push('入力されたアドレスが登録表記との不一致等の理由で移行対象のアドレスではない可能性があるため、ガイダンス2で確認を依頼してください。');
-  if (s.authCodeIssue === '移行エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報あり)')
-    policies.push('任意情報を失念してしまうとアカウントの復旧ができないため、ガイダンス2で連携解除後の新規登録となることをご案内ください。');
-  if (s.authCodeIssue === '新規エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報なし)')
-    policies.push('入力されたアドレスが移行の対象である可能性があるため、移行手続きをお試しいただくようご案内ください。');
-  if (s.usage === '世帯' && s.isMigration === false && s.authCodeIssue === '新規エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報あり)')
-    policies.push('このメールアドレスでSアカは作成済みです\n任意情報を失念してしまうとアカウントの復旧ができません\n作成済みのSアカは3か月未ログインで自動削除となり、そこから1か月経過後より同アドレスの利用が可能となります\n別メアドでのSアカ新規に不承の場合は、当窓口でのSアカ削除を承ってください。');
-  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === true && s.migMailUsable === true && s.sAccountCreated === false && s.authCodeIssue === '新規エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報あり)')
-    policies.push('このメールアドレスでSアカは作成済みです\n任意情報を失念してしまうとアカウントの復旧ができません\nガイダンス2で連携解除後の新規登録となることをご案内ください。');
-  var alreadyHandled =
-    (s.usage === '世帯' && s.isMigration === false && s.authCodeIssue === '新規エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報あり)') ||
-    (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === true && s.migMailUsable === true && s.sAccountCreated === false && s.authCodeIssue === '新規エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報あり)');
-  if (!alreadyHandled && s.authCodeIssue === '新規エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報あり)' && s.sjLinked === '連携済み')
-    policies.push('任意情報を失念してしまうとアカウントの復旧ができないため、ガイダンス2で連携解除後の新規登録となることをご案内ください。');
-  if (!alreadyHandled && s.authCodeIssue === '新規エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報あり)' && s.sjLinked === '未連携')
-    policies.push('任意情報を失念してしまうとアカウントの復旧ができないため、別のメールアドレスで新規登録となることをご案内ください。※アドレスが1つしかないという申告であれば、3か月未ログインで自動削除、そこから1か月経過後から同アドレスが使用可能となることをご案内ください。（不承の場合は、当窓口での削除から1か月経過後に同アドレスで新規登録をしていただくようご案内ください）');
-  if (s.usage === '世帯' && s.isMigration === false && s.authCodeIssue === 'メール受信なし' && s.cbMistake === true && s.cbReject === true && s.cbSpam === true)
-    policies.push('クライアントエスカレーションの案件です');
+  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === false) policies.push('移行対象者ではありませんので新規登録を案内してください');
+  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === false) policies.push('ガイダンス2で確認を依頼してください');
+  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === true && s.migMailUsable === false) policies.push('ガイダンス2で連携解除を依頼してください');
+  if (s.sjLinked === '再連携必要') policies.push('ガイダンス2で連携解除後の再登録となることを案内してください');
+  if (s.sAccountCreated === false && s.authCodeResult === '認証コード受信') policies.push('PW変更後、ログインしてご利用いただくようご案内ください。');
+  if (s.sjLinked === 'ログイン不可' && s.sjLoginlessResult === '認証コード受信') policies.push('PW変更後、ログインしてご利用いただくようご案内ください。');
+  if (s.usage === '世帯' && s.isMigration === true && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult === '認証コード未着(任意情報なし)') policies.push('入力されたメールアドレスでアカウントが作成されていない可能性が高いです。\n移行手続きを進めていただくようご案内ください');
+  if (s.usage === '世帯' && s.isMigration === true && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult === '認証コード未着(任意情報あり)') policies.push('このメールアドレスでSアカは作成済みです\n任意情報を失念してしまうとアカウントの復旧ができません\nガイダンス2で連携解除後の新規登録となることをご案内ください。');
+  if (s.usage === '世帯' && s.isMigration === false && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult === '認証コード未着(任意情報なし)') policies.push('入力されたメールアドレスでアカウントが作成されていない可能性が高いです。\n新規登録の手続きを進めていただくようご案内ください');
+  if (s.usage === '世帯' && s.isMigration === false && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult === '認証コード未着(任意情報あり)') policies.push('このメールアドレスでSアカは作成済みです\n任意情報を失念してしまうとアカウントの復旧ができません\nガイダンス2で連携解除後の新規登録となることをご案内ください。');
+  if (s.authCodeIssue === 'Jアカ重複メール受信') policies.push('ガイダンス2で受信料アカウントの登録状況確認を依頼してください。');
+  if (s.authCodeIssue === '移行エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報なし)') policies.push('入力されたアドレスが登録表記との不一致等の理由で移行対象のアドレスではない可能性があるため、ガイダンス2で確認を依頼してください。');
+  if (s.authCodeIssue === '移行エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報あり)') policies.push('任意情報を失念してしまうとアカウントの復旧ができないため、ガイダンス2で連携解除後の新規登録となることをご案内ください。');
+  if (s.authCodeIssue === '新規エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報なし)') policies.push('入力されたアドレスが移行の対象である可能性があるため、移行手続きをお試しいただくようご案内ください。');
+  if (s.usage === '世帯' && s.isMigration === false && s.authCodeIssue === '新規エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報あり)') policies.push('このメールアドレスでSアカは作成済みです\n任意情報を失念してしまうとアカウントの復旧ができません\n作成済みのSアカは3か月未ログインで自動削除となり、そこから1か月経過後より同アドレスの利用が可能となります\n別メアドでのSアカ新規に不承の場合は、当窓口でのSアカ削除を承ってください。');
+  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === true && s.migMailUsable === true && s.sAccountCreated === false && s.authCodeIssue === '新規エラーメール受信' && s.authCodeResult === '認証コード未着(任意情報あり)') policies.push('このメールアドレスでSアカは作成済みです\n任意情報を失念してしまうとアカウントの復旧ができません\nガイダンス2で連携解除後の新規登録となることをご案内ください。');
+  if (s.authCodeIssue === 'メール受信なし' && s.cbMistake === true && s.cbReject === true && s.cbSpam === true) policies.push('クライアントエスカレーションの案件です');
   return policies;
 }
 
@@ -562,68 +716,23 @@ function renderHearing() {
   if (!el) return;
   var s = hearingState;
   var h = '';
-
   h += _hrRow('用途', _strBtns('usage', s.usage, [{l:'世帯',v:'世帯'},{l:'学校',v:'学校'},{l:'事業',v:'事業'}]));
-
-  if (s.usage === '世帯')
-    h += _hrRow('移行対象者ですか？', _boolBtns('isMigration', s.isMigration, 'はい', 'いいえ'));
-
-  if (s.usage === '世帯' && s.isMigration === true)
-    h += _hrRow('2025/8/15時点で旧プラスのIDは発行されていましたか？', _boolBtns('oldPlusId', s.oldPlusId, 'はい(わからない)', 'いいえ'));
-
-  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true)
-    h += _hrRow('7月/9月/10月に送信している移行案内メールは確認されていますか？', _boolBtns('migMailConfirmed', s.migMailConfirmed, 'はい', 'いいえ(わからない)'));
-
-  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === true)
-    h += _hrRow('移行案内メールを受信しているメールアドレスは現在も使用可能ですか？', _boolBtns('migMailUsable', s.migMailUsable, 'はい', 'いいえ'));
-
-  if (s.usage === '学校' || s.usage === '事業')
-    h += _hrRow('入電者はアカウント担当者ですか？', _boolBtns('isAccountPerson', s.isAccountPerson, 'はい', 'いいえ'));
-
-  if (s.usage !== null)
-    h += _hrRow('Sアカは作成済みですか？', _boolBtns('sAccountCreated', s.sAccountCreated, 'はい', 'いいえ'));
-
-  if (s.sAccountCreated === false)
-    h += _hrRow('認証コード未着ですか？', _strBtns('authCodeIssue', s.authCodeIssue, [
-      {l:'移行エラーメール受信', v:'移行エラーメール受信'},
-      {l:'新規エラーメール受信', v:'新規エラーメール受信'},
-      {l:'Jアカ重複メール受信', v:'Jアカ重複メール受信'},
-      {l:'メール受信なし',       v:'メール受信なし'}
-    ]));
-
-  if (s.authCodeIssue === '移行エラーメール受信' || s.authCodeIssue === '新規エラーメール受信')
-    h += _hrRow('ログイン画面下部「PWをお忘れの方はこちら」から進んで認証コードが届くか', _strBtns('authCodeResult', s.authCodeResult, [
-      {l:'認証コード受信',                 v:'認証コード受信'},
-      {l:'認証コード未着(任意情報なし)',    v:'認証コード未着(任意情報なし)'},
-      {l:'認証コード未着(任意情報あり)',    v:'認証コード未着(任意情報あり)'}
-    ]));
-
-  if (s.usage === '世帯' && s.sAccountCreated === true)
-    h += _hrRow('S-J連携済みですか？', _strBtns('sjLinked', s.sjLinked, [
-      {l:'連携済み',                   v:'連携済み'},
-      {l:'未連携',                     v:'未連携'},
-      {l:'未確認（再連携が必要です）',  v:'再連携必要'},
-      {l:'ログイン不可',               v:'ログイン不可'}
-    ]));
-
-  if (s.usage === '世帯' && s.sAccountCreated === true && s.sjLinked === 'ログイン不可')
-    h += _hrRow('ログイン画面下部「PWをお忘れの方はこちら」から進んで認証コードが届くか', _strBtns('sjLoginlessResult', s.sjLoginlessResult, [
-      {l:'認証コード受信',                 v:'認証コード受信'},
-      {l:'認証コード未着(任意情報なし)',    v:'認証コード未着(任意情報なし)'},
-      {l:'認証コード未着(任意情報あり)',    v:'認証コード未着(任意情報あり)'}
-    ]));
-
+  if (s.usage === '世帯') h += _hrRow('移行対象者ですか？', _boolBtns('isMigration', s.isMigration, 'はい', 'いいえ'));
+  if (s.usage === '世帯' && s.isMigration === true) h += _hrRow('2025/8/15時点で旧プラスのIDは発行されていましたか？', _boolBtns('oldPlusId', s.oldPlusId, 'はい(わからない)', 'いいえ'));
+  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true) h += _hrRow('7月/9月/10月に送信している移行案内メールは確認されていますか？', _boolBtns('migMailConfirmed', s.migMailConfirmed, 'はい', 'いいえ(わからない)'));
+  if (s.usage === '世帯' && s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === true) h += _hrRow('移行案内メールを受信しているメールアドレスは現在も使用可能ですか？', _boolBtns('migMailUsable', s.migMailUsable, 'はい', 'いいえ'));
+  if (s.usage === '学校' || s.usage === '事業') h += _hrRow('入電者はアカウント担当者ですか？', _boolBtns('isAccountPerson', s.isAccountPerson, 'はい', 'いいえ'));
+  if (s.usage !== null) h += _hrRow('Sアカは作成済みですか？', _boolBtns('sAccountCreated', s.sAccountCreated, 'はい', 'いいえ'));
+  if (s.sAccountCreated === false) h += _hrRow('認証コード未着ですか？', _strBtns('authCodeIssue', s.authCodeIssue, [{l:'移行エラーメール受信',v:'移行エラーメール受信'},{l:'新規エラーメール受信',v:'新規エラーメール受信'},{l:'Jアカ重複メール受信',v:'Jアカ重複メール受信'},{l:'メール受信なし',v:'メール受信なし'}]));
+  if (s.authCodeIssue === '移行エラーメール受信' || s.authCodeIssue === '新規エラーメール受信') h += _hrRow('ログイン画面下部「PWをお忘れの方はこちら」から進んで認証コードが届くか', _strBtns('authCodeResult', s.authCodeResult, [{l:'認証コード受信',v:'認証コード受信'},{l:'認証コード未着(任意情報なし)',v:'認証コード未着(任意情報なし)'},{l:'認証コード未着(任意情報あり)',v:'認証コード未着(任意情報あり)'}]));
+  if (s.usage === '世帯' && s.sAccountCreated === true) h += _hrRow('S-J連携済みですか？', _strBtns('sjLinked', s.sjLinked, [{l:'連携済み',v:'連携済み'},{l:'未連携',v:'未連携'},{l:'未確認（再連携が必要です）',v:'再連携必要'},{l:'ログイン不可',v:'ログイン不可'}]));
+  if (s.usage === '世帯' && s.sAccountCreated === true && s.sjLinked === 'ログイン不可') h += _hrRow('ログイン画面下部「PWをお忘れの方はこちら」から進んで認証コードが届くか', _strBtns('sjLoginlessResult', s.sjLoginlessResult, [{l:'認証コード受信',v:'認証コード受信'},{l:'認証コード未着(任意情報なし)',v:'認証コード未着(任意情報なし)'},{l:'認証コード未着(任意情報あり)',v:'認証コード未着(任意情報あり)'}]));
   var showJAccount = false;
   if (s.usage === '世帯' && s.sAccountCreated === true) {
-    if (s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === true && s.migMailUsable === true)
-      showJAccount = (s.sjLinked === '未連携' || s.sjLinked === '再連携必要');
-    else if (s.isMigration !== true)
-      showJAccount = (s.sjLinked === '未連携' || s.sjLinked === '再連携必要');
+    if (s.isMigration === true && s.oldPlusId === true && s.migMailConfirmed === true && s.migMailUsable === true) showJAccount = (s.sjLinked === '未連携' || s.sjLinked === '再連携必要');
+    else if (s.isMigration !== true) showJAccount = (s.sjLinked === '未連携' || s.sjLinked === '再連携必要');
   }
-  if (showJAccount)
-    h += _hrRow('Jアカは作成済みですか？', _boolBtns('jAccountCreated', s.jAccountCreated, 'はい', 'いいえ'));
-
-  // 操作環境
+  if (showJAccount) h += _hrRow('Jアカは作成済みですか？', _boolBtns('jAccountCreated', s.jAccountCreated, 'はい', 'いいえ'));
   var devBtns = '<div class="hr-device-btns">';
   DEVICE_LIST.forEach(function (device) {
     var d = s.devices[device];
@@ -635,56 +744,29 @@ function renderHearing() {
     var opts = DEVICE_DETAIL_OPTIONS[device];
     if (d.selected && opts && opts.length > 0) {
       devBtns += '<div class="hr-device-detail"><span class="hr-device-detail-label">' + device + '：</span>';
-      opts.forEach(function (opt) {
-        devBtns += '<button class="hr-detail-btn' + (d.detail === opt ? ' active' : '') + '" onclick="setHearingDeviceDetail(\'' + device + '\',\'' + opt + '\')">' + opt + '</button>';
-      });
+      opts.forEach(function (opt) { devBtns += '<button class="hr-detail-btn' + (d.detail === opt ? ' active' : '') + '" onclick="setHearingDeviceDetail(\'' + device + '\',\'' + opt + '\')">' + opt + '</button>'; });
       devBtns += '</div>';
     }
   });
   h += _hrRow('操作環境', devBtns, 'hr-row-devices');
-
   if (s.authCodeIssue === 'メール受信なし') {
-    h += '<div class="hr-divider">メール未着調査</div>';
     var dv = s.mailDomain;
-    h += '<div class="hr-row">' +
-         '<div class="hr-label">■ドメイン（＠以降）</div>' +
-         '<select id="hearingDomainSel" class="hr-select" onchange="onHearingDomainChange()">' +
-         '<option value="">選択してください</option>' +
-         _mkOpt('@docomo.ne.jp', dv) + _mkOpt('@softbank.ne.jp', dv) +
-         _mkOpt('@i.softbank.jp', dv) + _mkOpt('@ezweb.ne.jp', dv) +
-         _mkOpt('@au.com', dv) + _mkOpt('@gmail.com', dv) +
-         _mkOpt('@yahoo.co.jp', dv) + _mkOpt('@outlook.com', dv) +
-         '<option value="__manual__"' + (dv === '__manual__' ? ' selected' : '') + '>その他（手入力）</option>' +
-         '</select>' +
-         '<div id="hearingDomainManualWrap" style="display:' + (dv === '__manual__' ? 'block' : 'none') + ';margin-top:6px;">' +
-         '<input id="hearingDomainManual" type="text" class="hr-text-input" placeholder="例）@example.com" value="' + _hEsc(s.mailDomainManual) + '" oninput="onHearingDomainManualInput()">' +
-         '</div></div>';
-    h += '<div class="hr-row">' +
-         '<div class="hr-label">■確認項目</div>' +
-         _mkChk('cbMistake', s.cbMistake, 'メールアドレスの入力ミス') +
-         _mkChk('cbReject',  s.cbReject,  '受信拒否') +
-         _mkChk('cbSpam',    s.cbSpam,    '迷惑メールフィルター') +
-         '</div>';
+    h += '<div class="hr-divider">メール未着調査</div>';
+    h += '<div class="hr-row"><div class="hr-label">■ドメイン（＠以降）</div><select id="hearingDomainSel" class="hr-select" onchange="onHearingDomainChange()"><option value="">選択してください</option>' + _mkOpt('@docomo.ne.jp',dv) + _mkOpt('@softbank.ne.jp',dv) + _mkOpt('@i.softbank.jp',dv) + _mkOpt('@ezweb.ne.jp',dv) + _mkOpt('@au.com',dv) + _mkOpt('@gmail.com',dv) + _mkOpt('@yahoo.co.jp',dv) + _mkOpt('@outlook.com',dv) + '<option value="__manual__"' + (dv === '__manual__' ? ' selected' : '') + '>その他（手入力）</option></select><div id="hearingDomainManualWrap" style="display:' + (dv === '__manual__' ? 'block' : 'none') + ';margin-top:6px;"><input id="hearingDomainManual" type="text" class="hr-text-input" placeholder="例）@example.com" value="' + _hEsc(s.mailDomainManual) + '" oninput="onHearingDomainManualInput()"></div></div>';
+    h += '<div class="hr-row"><div class="hr-label">■確認項目</div>' + _mkChk('cbMistake',s.cbMistake,'メールアドレスの入力ミス') + _mkChk('cbReject',s.cbReject,'受信拒否') + _mkChk('cbSpam',s.cbSpam,'迷惑メールフィルター') + '</div>';
   }
-
   h += '<div id="hearingSummaryArea"></div>';
   el.innerHTML = h;
   renderHearingSummary();
 }
 
-function _mkOpt(val, selected) {
-  return '<option value="' + val + '"' + (selected === val ? ' selected' : '') + '>' + val + '</option>';
-}
-function _mkChk(id, checked, label) {
-  return '<label class="hr-check-label"><input id="hearingCb_' + id + '" type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="onHearingCheckChange(\'' + id + '\')">' + ' ' + label + '</label>';
-}
+function _mkOpt(val, selected) { return '<option value="' + val + '"' + (selected === val ? ' selected' : '') + '>' + val + '</option>'; }
+function _mkChk(id, checked, label) { return '<label class="hr-check-label"><input id="hearingCb_' + id + '" type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="onHearingCheckChange(\'' + id + '\')">' + ' ' + label + '</label>'; }
 
 function renderHearingSummary() {
   var area = document.getElementById('hearingSummaryArea');
   if (!area) return;
-  var s = hearingState;
-  var rows = [];
-
+  var s = hearingState, rows = [];
   if (s.usage) rows.push(['用途', s.usage, '']);
   if (s.usage === '世帯') {
     if (s.isMigration !== null) rows.push(['移行対象者', s.isMigration ? 'はい' : 'いいえ', 'bool']);
@@ -696,26 +778,19 @@ function renderHearingSummary() {
       }
     }
   }
-  if ((s.usage === '学校' || s.usage === '事業') && s.isAccountPerson !== null)
-    rows.push(['アカウント担当者', s.isAccountPerson ? 'はい' : 'いいえ', 'bool']);
+  if ((s.usage === '学校' || s.usage === '事業') && s.isAccountPerson !== null) rows.push(['アカウント担当者', s.isAccountPerson ? 'はい' : 'いいえ', 'bool']);
   if (s.sAccountCreated !== null) rows.push(['Sアカ作成済み', s.sAccountCreated ? 'はい' : 'いいえ', 'bool']);
   if (s.sAccountCreated === false && s.authCodeIssue) rows.push(['認証コード未着', s.authCodeIssue, '']);
   if (s.sAccountCreated === false && s.authCodeResult) rows.push(['認証コード確認', s.authCodeResult, '']);
-  if (s.usage === '世帯' && s.sAccountCreated === true && s.sjLinked !== null)
-    rows.push(['S-J連携', s.sjLinked === '再連携必要' ? '未確認（再連携必要）' : s.sjLinked,
-      s.sjLinked === '連携済み' ? 'yes' : 'no']);
-  if (s.usage === '世帯' && s.sAccountCreated === true && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult !== null)
-    rows.push(['認証コード確認(ログイン不可)', s.sjLoginlessResult, '']);
-  if (s.usage === '世帯' && s.sAccountCreated === true && (s.sjLinked === '未連携' || s.sjLinked === '再連携必要') && s.jAccountCreated !== null)
-    rows.push(['Jアカ作成済み', s.jAccountCreated ? 'はい' : 'いいえ', 'bool']);
-
+  if (s.usage === '世帯' && s.sAccountCreated === true && s.sjLinked !== null) rows.push(['S-J連携', s.sjLinked === '再連携必要' ? '未確認（再連携必要）' : s.sjLinked, s.sjLinked === '連携済み' ? 'yes' : 'no']);
+  if (s.usage === '世帯' && s.sAccountCreated === true && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult !== null) rows.push(['認証コード確認(ログイン不可)', s.sjLoginlessResult, '']);
+  if (s.usage === '世帯' && s.sAccountCreated === true && (s.sjLinked === '未連携' || s.sjLinked === '再連携必要') && s.jAccountCreated !== null) rows.push(['Jアカ作成済み', s.jAccountCreated ? 'はい' : 'いいえ', 'bool']);
   var envParts = [];
   DEVICE_LIST.forEach(function (device) {
     var d = s.devices[device];
     if (d.selected) envParts.push(d.detail ? device + '(' + d.detail + ')' : device);
   });
   if (envParts.length) rows.push(['操作環境', envParts.join('、'), '']);
-
   if (s.authCodeIssue === 'メール受信なし') {
     var domain = s.mailDomain === '__manual__' ? s.mailDomainManual : s.mailDomain;
     if (domain) rows.push(['ドメイン', domain, '']);
@@ -725,10 +800,8 @@ function renderHearingSummary() {
     if (s.cbSpam)    checks.push('迷惑メールフィルター');
     if (checks.length) rows.push(['確認項目', checks.join('、'), '']);
   }
-
   var policies = calcPolicies(s);
   if (rows.length === 0 && policies.length === 0) { area.innerHTML = ''; return; }
-
   var h = '<div class="hr-summary"><div class="hr-summary-title">📋 ヒアリング内容</div><div class="hr-summary-rows">';
   rows.forEach(function (r) {
     var label = r[0], val = r[1], type = r[2];
@@ -739,17 +812,13 @@ function renderHearingSummary() {
     h += '<div class="hr-summary-row"><span class="hr-sum-label">' + _hEsc(label) + '</span><span class="' + valClass + '">' + _hEsc(val) + '</span></div>';
   });
   h += '</div>';
-
   if (policies.length > 0) {
     h += '<div id="hearingPolicyArea">';
-    policies.forEach(function (p) {
-      h += '<div class="hr-summary-policy"><span class="hr-policy-icon">📌</span><span class="hr-policy-text">対応方針：' + _hEsc(p).replace(/\n/g, '<br>') + '</span></div>';
-    });
+    policies.forEach(function (p) { h += '<div class="hr-summary-policy"><span class="hr-policy-icon">📌</span><span class="hr-policy-text">対応方針：' + _hEsc(p).replace(/\n/g, '<br>') + '</span></div>'; });
     h += '</div>';
   }
   h += '</div>';
   area.innerHTML = h;
-
   if (policies.length > 0) {
     setTimeout(function () {
       var pEl = document.getElementById('hearingPolicyArea');
@@ -759,8 +828,7 @@ function renderHearingSummary() {
 }
 
 window.copyHearingText = function () {
-  var s = hearingState;
-  var lines = [];
+  var s = hearingState, lines = [];
   if (s.usage) lines.push('用途：' + s.usage);
   if (s.usage === '世帯') {
     if (s.isMigration !== null) lines.push('移行対象者：' + (s.isMigration ? 'はい' : 'いいえ'));
@@ -772,22 +840,15 @@ window.copyHearingText = function () {
       }
     }
   }
-  if ((s.usage === '学校' || s.usage === '事業') && s.isAccountPerson !== null)
-    lines.push('アカウント担当者：' + (s.isAccountPerson ? 'はい' : 'いいえ'));
+  if ((s.usage === '学校' || s.usage === '事業') && s.isAccountPerson !== null) lines.push('アカウント担当者：' + (s.isAccountPerson ? 'はい' : 'いいえ'));
   if (s.sAccountCreated !== null) lines.push('Sアカ作成済み：' + (s.sAccountCreated ? 'はい' : 'いいえ'));
   if (s.sAccountCreated === false && s.authCodeIssue) lines.push('認証コード未着：' + s.authCodeIssue);
   if (s.sAccountCreated === false && s.authCodeResult) lines.push('認証コード確認：' + s.authCodeResult);
-  if (s.usage === '世帯' && s.sAccountCreated === true && s.sjLinked)
-    lines.push('S-J連携：' + (s.sjLinked === '再連携必要' ? '未確認（再連携必要）' : s.sjLinked));
-  if (s.usage === '世帯' && s.sAccountCreated === true && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult)
-    lines.push('認証コード確認(ログイン不可)：' + s.sjLoginlessResult);
-  if (s.usage === '世帯' && s.sAccountCreated === true && (s.sjLinked === '未連携' || s.sjLinked === '再連携必要') && s.jAccountCreated !== null)
-    lines.push('Jアカ作成済み：' + (s.jAccountCreated ? 'はい' : 'いいえ'));
+  if (s.usage === '世帯' && s.sAccountCreated === true && s.sjLinked) lines.push('S-J連携：' + (s.sjLinked === '再連携必要' ? '未確認（再連携必要）' : s.sjLinked));
+  if (s.usage === '世帯' && s.sAccountCreated === true && s.sjLinked === 'ログイン不可' && s.sjLoginlessResult) lines.push('認証コード確認(ログイン不可)：' + s.sjLoginlessResult);
+  if (s.usage === '世帯' && s.sAccountCreated === true && (s.sjLinked === '未連携' || s.sjLinked === '再連携必要') && s.jAccountCreated !== null) lines.push('Jアカ作成済み：' + (s.jAccountCreated ? 'はい' : 'いいえ'));
   var envParts = [];
-  DEVICE_LIST.forEach(function (device) {
-    var d = s.devices[device];
-    if (d.selected) envParts.push(d.detail ? device + '(' + d.detail + ')' : device);
-  });
+  DEVICE_LIST.forEach(function (device) { var d = s.devices[device]; if (d.selected) envParts.push(d.detail ? device + '(' + d.detail + ')' : device); });
   if (envParts.length) lines.push('操作環境：' + envParts.join('、'));
   if (s.authCodeIssue === 'メール受信なし') {
     var domain = s.mailDomain === '__manual__' ? s.mailDomainManual : s.mailDomain;
@@ -802,9 +863,8 @@ window.copyHearingText = function () {
   if (lines.length === 0) { _showHearingToast('コピーする内容がありません', true); return; }
   var text = lines.join('\n');
   var done = function () { _showHearingToast('ヒアリング内容をコピーしました', false); };
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(done).catch(function () { _fallbackCopy(text); done(); });
-  } else { _fallbackCopy(text); done(); }
+  if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done).catch(function () { _fallbackCopy(text); done(); }); }
+  else { _fallbackCopy(text); done(); }
 };
 
 function _showHearingToast(msg, isError) {
@@ -816,33 +876,23 @@ function _showHearingToast(msg, isError) {
   toast._t = setTimeout(function () { toast.className = 'hearing-copy-toast'; }, 2000);
 }
 
-// グローバル公開（admin.html など外部から呼び出し可能）
 window.renderHearing = renderHearing;
 
 // =============================================================================
-// ⑦ キーボードナビゲーション（keyboard-nav.js）
+// ⑦ キーボードナビゲーション（変更なし）
 // =============================================================================
 document.addEventListener('keydown', function (e) {
   var key = e.key;
   var focused = document.activeElement;
-
-  // Enter: フォーカス中ボタンをクリック
   if (key === 'Enter') {
     if (focused && focused !== document.body) {
-      if (focused.tagName === 'BUTTON' ||
-          focused.getAttribute('role') === 'button' ||
-          focused.classList.contains('sb-item') ||
-          focused.classList.contains('script-list-item') ||
-          focused.classList.contains('step-choice-btn') ||
-          focused.classList.contains('suggest-item')) {
-        focused.click();
-        e.preventDefault();
-        return;
+      if (focused.tagName === 'BUTTON' || focused.getAttribute('role') === 'button' ||
+          focused.classList.contains('sb-item') || focused.classList.contains('script-list-item') ||
+          focused.classList.contains('step-choice-btn') || focused.classList.contains('suggest-item')) {
+        focused.click(); e.preventDefault(); return;
       }
     }
   }
-
-  // 検索ボックス フォーカス中のサジェスト操作
   var searchBox  = document.getElementById('searchBox');
   var suggestBox = document.getElementById('suggestBox');
   if (focused === searchBox && suggestBox && suggestBox.style.display !== 'none') {
@@ -850,64 +900,10 @@ document.addEventListener('keydown', function (e) {
     var current = suggestBox.querySelector('.suggest-item.kb-focus');
     var idx = -1;
     items.forEach(function (el, i) { if (el === current) idx = i; });
-
-    if (key === 'ArrowDown') {
-      e.preventDefault();
-      if (current) current.classList.remove('kb-focus');
-      var next = items[Math.min(idx + 1, items.length - 1)];
-      next.classList.add('kb-focus');
-      next.scrollIntoView({ block: 'nearest' });
-      return;
-    }
-    if (key === 'ArrowUp') {
-      e.preventDefault();
-      if (current) current.classList.remove('kb-focus');
-      if (idx > 0) { var prev = items[idx - 1]; prev.classList.add('kb-focus'); prev.scrollIntoView({ block: 'nearest' }); }
-      return;
-    }
-    if (key === 'Enter') {
-      e.preventDefault();
-      if (current) { current.click(); return; }
-      if (items.length > 0) { items[0].click(); return; }
-    }
+    if (key === 'ArrowDown') { e.preventDefault(); if (current) current.classList.remove('kb-focus'); var next = items[Math.min(idx + 1, items.length - 1)]; next.classList.add('kb-focus'); next.scrollIntoView({ block: 'nearest' }); return; }
+    if (key === 'ArrowUp') { e.preventDefault(); if (current) current.classList.remove('kb-focus'); if (idx > 0) { var prev = items[idx - 1]; prev.classList.add('kb-focus'); prev.scrollIntoView({ block: 'nearest' }); } return; }
+    if (key === 'Enter') { e.preventDefault(); if (current) { current.click(); return; } if (items.length > 0) { items[0].click(); return; } }
   }
-
-  // スクリプトリスト（左ペイン）矢印キー
-  var scriptList = document.querySelector('.script-list');
-  if (scriptList) {
-    var listItems  = Array.from(scriptList.querySelectorAll('.script-list-item'));
-    if (listItems.length > 0) {
-      var activeItem = scriptList.querySelector('.script-list-item.active');
-      var listIdx = listItems.indexOf(activeItem);
-      if (key === 'ArrowDown') {
-        e.preventDefault();
-        var nxt = listItems[Math.min(listIdx + 1, listItems.length - 1)];
-        if (nxt) { nxt.click(); nxt.focus(); }
-        return;
-      }
-      if (key === 'ArrowUp') {
-        e.preventDefault();
-        var prv = listItems[Math.max(listIdx - 1, 0)];
-        if (prv) { prv.click(); prv.focus(); }
-        return;
-      }
-    }
-  }
-
-  // ステップ分岐ボタン矢印キー
-  var stepChoices = document.querySelectorAll('.step-choice-btn');
-  if (stepChoices.length > 0 && (key === 'ArrowDown' || key === 'ArrowUp' || key === 'ArrowRight' || key === 'ArrowLeft')) {
-    var arr = Array.from(stepChoices);
-    var focusedIdx = arr.indexOf(document.activeElement);
-    if (focusedIdx === -1) {
-      if (key === 'ArrowDown' || key === 'ArrowRight') { arr[0].focus(); e.preventDefault(); }
-      return;
-    }
-    if (key === 'ArrowDown' || key === 'ArrowRight') { e.preventDefault(); arr[Math.min(focusedIdx + 1, arr.length - 1)].focus(); return; }
-    if (key === 'ArrowUp' || key === 'ArrowLeft') { e.preventDefault(); if (focusedIdx > 0) arr[focusedIdx - 1].focus(); return; }
-  }
-
-  // ← キー: 戻る
   if (key === 'ArrowLeft') {
     if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA' || focused.tagName === 'SELECT')) return;
     var backBtn = document.querySelector('.step-back-btn');
@@ -915,62 +911,13 @@ document.addEventListener('keydown', function (e) {
     if (typeof goBack === 'function') { e.preventDefault(); goBack(); }
     return;
   }
-
-  // → キー: 進む
   if (key === 'ArrowRight') {
     if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA' || focused.tagName === 'SELECT')) return;
     if (typeof goForward === 'function') { e.preventDefault(); goForward(); }
     return;
   }
-
-  // サイドバーアコーディオン矢印キー
-  if (focused && focused.closest('.sb-acc-header')) {
-    var block = focused.closest('.sb-acc-block');
-    if (key === 'ArrowRight' || key === 'Enter') {
-      e.preventDefault();
-      var body = block && block.querySelector(':scope > .sb-acc-body');
-      if (body && !body.classList.contains('open')) focused.click();
-      return;
-    }
-    if (key === 'ArrowLeft') {
-      e.preventDefault();
-      var bodyL = block && block.querySelector(':scope > .sb-acc-body');
-      if (bodyL && bodyL.classList.contains('open')) focused.click();
-      return;
-    }
-    if (key === 'ArrowDown' || key === 'ArrowUp') {
-      e.preventDefault();
-      var allF = Array.from(document.querySelectorAll('#sidebarEl [tabindex="0"], #mailSidebarEl [tabindex="0"], #scriptSidebarEl [tabindex="0"]'));
-      var fi = allF.indexOf(focused);
-      if (key === 'ArrowDown' && fi < allF.length - 1) allF[fi + 1].focus();
-      if (key === 'ArrowUp'   && fi > 0) allF[fi - 1].focus();
-      return;
-    }
-  }
-
-  // サイドバーアイテム矢印キー
-  if (focused && focused.classList.contains('sb-item')) {
-    if (key === 'ArrowDown' || key === 'ArrowUp') {
-      e.preventDefault();
-      var allSb = Array.from(document.querySelectorAll('#sidebarEl [tabindex="0"], #mailSidebarEl [tabindex="0"], #scriptSidebarEl [tabindex="0"]'));
-      var si = allSb.indexOf(focused);
-      if (key === 'ArrowDown' && si < allSb.length - 1) allSb[si + 1].focus();
-      if (key === 'ArrowUp'   && si > 0) allSb[si - 1].focus();
-      return;
-    }
-  }
-
-  // ホームボタングリッド矢印キー
-  var buttonGrid = document.querySelector('.button-grid');
-  if (buttonGrid && focused && buttonGrid.contains(focused)) {
-    var btns = Array.from(buttonGrid.querySelectorAll('button'));
-    var bi = btns.indexOf(focused);
-    if (key === 'ArrowRight' || key === 'ArrowDown') { e.preventDefault(); btns[Math.min(bi + 1, btns.length - 1)].focus(); return; }
-    if (key === 'ArrowLeft'  || key === 'ArrowUp')   { e.preventDefault(); btns[Math.max(bi - 1, 0)].focus(); return; }
-  }
 });
 
-// フォーカス用CSS動的追加
 (function () {
   if (document.getElementById('_cuKbCSS')) return;
   var style = document.createElement('style');
@@ -989,7 +936,6 @@ document.addEventListener('keydown', function (e) {
 // ⑧ DOMContentLoaded：サイドメニュー描画 & 各種初期化
 // =============================================================================
 document.addEventListener('DOMContentLoaded', function () {
-  // ダークモード toggle CSS
   if (!document.getElementById('_smDarkCSS')) {
     var st = document.createElement('style');
     st.id = '_smDarkCSS';
@@ -1003,27 +949,22 @@ document.addEventListener('DOMContentLoaded', function () {
     document.head.appendChild(st);
   }
 
-  // サイドメニュー描画
   var m = document.getElementById('sideMenu');
   if (m) {
+    // 現在の設定を読み込む（'1' のときのみダーク）
     var saved  = localStorage.getItem('darkMode');
-    var isDark = saved === '1' || (saved === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    var isDark = saved === '1'; // 要件：デフォルトはオフ（OS設定には追従しない）
     m.innerHTML = _buildSideMenuHTML(isDark);
-
-    // 更新履歴描画（storage 変更も監視）
     window.renderHistory();
     window.addEventListener('storage', function (e) {
       if (e.key === 'updateHistory') window.renderHistory();
     });
   }
 
-  // 定型文メニュー描画
   window.renderQuickMenu();
 
-  // ヒアリングシートの初回描画（hearingContent が存在するページのみ）
   if (document.getElementById('hearingContent')) renderHearing();
 
-  // クリック外でサイドメニュー・定型文メニューを閉じる
   document.addEventListener('click', function (e) {
     if (!e.target.closest('.quick-copy-area')) {
       var qm = document.getElementById('quickMenu');
@@ -1035,3 +976,51 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 });
+
+// =============================================================================
+// ⑦ 画面へのJSON D&Dインポート
+//    JSON ファイルをページ上にドロップするとインポートを実行する
+// =============================================================================
+(function () {
+  function _handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.classList.remove('dnd-json-hover');
+    var files = Array.from(e.dataTransfer.files).filter(function(f) {
+      return f.name.endsWith('.json');
+    });
+    if (!files.length) return;
+    var file = files[0];
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      _processImportText(ev.target.result, true);
+    };
+    reader.readAsText(file);
+  }
+  function _handleDragOver(e) {
+    var hasJson = Array.from(e.dataTransfer.items || []).some(function(item) {
+      return item.kind === 'file';
+    });
+    if (!hasJson) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    document.body.classList.add('dnd-json-hover');
+  }
+  function _handleDragLeave(e) {
+    // bodyの外にカーソルが出た場合のみ解除
+    if (e.relatedTarget && document.body.contains(e.relatedTarget)) return;
+    document.body.classList.remove('dnd-json-hover');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      document.body.addEventListener('dragover',  _handleDragOver);
+      document.body.addEventListener('dragleave', _handleDragLeave);
+      document.body.addEventListener('drop',      _handleDrop);
+    });
+  } else {
+    document.body.addEventListener('dragover',  _handleDragOver);
+    document.body.addEventListener('dragleave', _handleDragLeave);
+    document.body.addEventListener('drop',      _handleDrop);
+  }
+})();

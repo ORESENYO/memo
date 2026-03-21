@@ -151,7 +151,7 @@ function buildAllSteps(type, subKey, itemIndex, currentStepIndex) {
       html += `</div>`;
       html += `<div class="step-card-body">${step.text}</div>`;
       if (step.memo) {
-        html += `<div class="step-memo-display">📝 ${step.memo}</div>`;
+        html += `<div class="step-memo-display">📝 ${step.memo.replace(/\n/g, '<br>')}</div>`;
       }
       if (step.choices && step.choices.length > 0) {
         html += `<div class="step-choices">`;
@@ -339,14 +339,14 @@ function getAllScripts() {
     if (cat.sub) {
       Object.entries(cat.sub).forEach(([subKey, sub]) => {
         (sub.list || []).forEach((item, i) => {
-          const fullText = item.steps ? item.steps.map(s => s.text || '').join(' ') : (item.text || '');
+          const fullText = item.steps ? item.steps.map(s => (s.text || '') + ' ' + (s.memo || '')).join(' ') : (item.text || '');
           all.push({ typeKey, subKey, index: i, categoryName: cat.name + ' › ' + sub.name, title: item.title, text: fullText });
         });
       });
     }
     // 直下アイテムは常に含める（cat.subがあっても）
     (cat.list || []).forEach((item, i) => {
-      const fullText = item.steps ? item.steps.map(s => s.text || '').join(' ') : (item.text || '');
+      const fullText = item.steps ? item.steps.map(s => (s.text || '') + ' ' + (s.memo || '')).join(' ') : (item.text || '');
       all.push({ typeKey, subKey: null, index: i, categoryName: cat.name, title: item.title, text: fullText });
     });
   });

@@ -431,7 +431,8 @@ searchBox.addEventListener('input', () => {
   _mailSuggestResults = templates.filter(t =>
     (t.title||'').toLowerCase().includes(ql) ||
     (t.subject||'').toLowerCase().includes(ql) ||
-    (t.body||'').toLowerCase().includes(ql)
+    (t.body||'').toLowerCase().includes(ql) ||
+    (t.note||'').toLowerCase().includes(ql)
   );
 
   if (!suggestBox) return;
@@ -468,7 +469,8 @@ searchBox.addEventListener('keydown', e => {
     const results = templates.filter(t =>
       (t.title||'').toLowerCase().includes(ql) ||
       (t.subject||'').toLowerCase().includes(ql) ||
-      (t.body||'').toLowerCase().includes(ql)
+      (t.body||'').toLowerCase().includes(ql) ||
+      (t.note||'').toLowerCase().includes(ql)
     );
     showMailSearchResults(results, q);
   }

@@ -1,17 +1,507 @@
-<html lang="ja" data-theme="light"><head>
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>画面遷移ツール</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script src="common-utils.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<style>
+/* ============================================================
+   screen.html 専用スタイル（全面改修版）
+   ============================================================ */
 
+/* ── ページ全体 ── */
+body.page-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: var(--header-h);
+}
+
+/* ── ボディレイアウト ── */
+.body { display: flex; flex: 1; overflow: hidden; }
+
+/* ============================================================
+   左サイドバー（アコーディオン式・400px）
+   パターン一覧 + 各パターン内の画面一覧を1カラムで表示
+   ============================================================ */
+.scr-sidebar {
+  width: 400px;
+  min-width: 400px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* サイドバー見出し */
+.scr-sidebar-head {
+  padding: 0 14px;
+  height: 42px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.scr-content-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  letter-spacing: .5px;
+}
+
+/* スクロール領域 */
+.scr-acc-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── パターン アコーディオン ── */
+.pat-acc-block {
+  border-bottom: 1px solid var(--border);
+}
+
+/* パターン見出し行（高さ36px統一） */
+.pat-acc-header {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 12px;
+  cursor: pointer;
+  background: var(--surface2);
+  border-left: 3px solid transparent;
+  transition: background .12s, border-color .12s;
+  user-select: none;
+}
+.pat-acc-header:hover { background: var(--accent-lt); }
+.pat-acc-header.open  { border-left-color: var(--accent); background: var(--accent-lt); }
+
+.pat-acc-arrow {
+  font-size: 9px;
+  color: var(--text4);
+  transition: transform .2s;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.pat-acc-arrow.open { transform: rotate(90deg); }
+
+.pat-acc-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pat-acc-header.open .pat-acc-name { color: var(--accent); }
+
+.pat-acc-count {
+  font-size: 10px;
+  color: var(--text4);
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+}
+
+/* パターン内ボディ（画面リスト） */
+.pat-acc-body { display: none; }
+.pat-acc-body.open { display: block; }
+
+/* ── 画面アイテム（行高36px、ドラッグ・削除なし） ── */
+.scr-acc-item {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 28px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background .1s, border-color .1s;
+}
+.scr-acc-item:hover { background: var(--bg); }
+.scr-acc-item.active { background: var(--accent-lt); border-left-color: var(--accent); }
+
+/* サムネイル（小） */
+.scr-acc-thumb {
+  width: 32px;
+  height: 22px;
+  border-radius: 3px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+.scr-acc-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* 画面情報 */
+.scr-acc-info { flex: 1; min-width: 0; }
+.scr-acc-num  { font-size: 8px; color: var(--text4); font-family: 'JetBrains Mono', monospace; line-height: 1.2; }
+.scr-acc-name { font-size: 11px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scr-acc-item.active .scr-acc-name { color: var(--accent); font-weight: 700; }
+
+/* 画面がないときのメッセージ */
+.scr-acc-empty {
+  padding: 8px 28px;
+  font-size: 11px;
+  color: var(--text4);
+}
+
+/* ファイル追加ラベル（パターン内） */
+.scr-acc-add-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px 0 28px;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background .12s;
+  border-top: 1px dashed var(--border);
+  margin-top: 2px;
+}
+.scr-acc-add-label:hover { background: var(--accent-lt); }
+.scr-acc-add-label input[type=file] { display: none; }
+
+/* ＋ パターンを追加ボタン（add-cat-btn 形式） */
+.add-cat-btn {
+  margin: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  padding: 8px 12px;
+  width: calc(100% - 28px);
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color .15s, color .15s;
+  flex-shrink: 0;
+}
+.add-cat-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ============================================================
+   メインエリア
+   ============================================================ */
+.main { flex: 1; overflow: hidden; display: flex; flex-direction: row; }
+.tab-page { display: none; flex: 1; overflow: hidden; }
+.tab-page.active { display: flex; }
+.scr-center-area { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+/* ============================================================
+   フロー図タブ
+   サムネイル → サムネイル → サムネイル の横並び表示
+   ============================================================ */
+.flow-page { flex-direction: column; }
+
+.flow-bar {
+  padding: 0 16px;
+  height: 42px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.flow-title { font-size: 13px; font-weight: 700; }
+.flow-pat-lbl { font-size: 11px; color: var(--text3); }
+
+/* スクロール可能なフローエリア */
+.flow-content { flex: 1; overflow: auto; padding: 24px 20px; }
+
+.flow-pat-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+/* サムネイル横並び行 */
+.flow-thumb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0;
+}
+
+/* 個別サムネイルカード */
+.flow-thumb-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 6px;
+  transition: border-color .15s, background .15s;
+  width: 130px;
+}
+.flow-thumb-card:hover { border-color: var(--accent); background: var(--accent-lt); }
+.flow-thumb-card.active { border-color: var(--accent); background: var(--accent-lt); }
+
+/* サムネイル画像 */
+.flow-thumb-img {
+  width: 110px;
+  height: 72px;
+  border-radius: 5px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin-bottom: 5px;
+}
+.flow-thumb-img img { width: 100%; height: 100%; object-fit: cover; }
+
+.flow-thumb-footer { text-align: center; width: 100%; }
+.flow-thumb-num  { font-size: 8px; color: var(--text4); font-family: 'JetBrains Mono', monospace; }
+.flow-thumb-name { font-size: 10px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+
+/* サムネイル間の矢印 */
+.flow-thumb-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 72px;
+  margin-top: 6px;
+  font-size: 18px;
+  color: var(--text3, #94a3b8);
+  flex-shrink: 0;
+}
+
+/* 空状態 */
+.flow-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text4);
+  font-size: 12px;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+/* ============================================================
+   プレビュータブ
+   左: キャンバス  右: 遷移履歴サイドバー
+   ============================================================ */
+.preview-page { flex-direction: row; }
+
+/* キャンバスエリア */
+.pv-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.pv-bar {
+  padding: 0 14px;
+  height: 42px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.pv-title { font-weight: 600; font-size: 13px; }
+.pv-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.pv-hint { font-size: 10px; color: var(--text4); margin-left: auto; }
+.pv-canvas-wrap { flex: 1; overflow: auto; background: var(--bg); padding: 20px; display: flex; align-items: flex-start; }
+.pv-canvas { position: relative; display: inline-block; }
+.pv-canvas img { display: block; max-width: 100%; }
+.pv-hs { position: absolute; border: 2px solid var(--accent); background: rgba(37,99,235,.10); border-radius: 2px; cursor: pointer; transition: background .1s; }
+.pv-hs:hover { background: rgba(37,99,235,.24); }
+.pv-tooltip { position: absolute; bottom: calc(100% + 4px); left: 0; background: rgba(0,0,0,.8); color: #fff; font-size: 10px; padding: 4px 7px; border-radius: 4px; white-space: pre; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 10; }
+.pv-hs:hover .pv-tooltip { opacity: 1; }
+
+/* ── 遷移履歴サイドバー（右）── */
+.pv-hist-sidebar {
+  width: 220px;
+  min-width: 220px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.pv-hist-head {
+  padding: 0 12px;
+  height: 42px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.pv-hist-list { flex: 1; overflow-y: auto; padding: 6px; }
+
+/* 履歴カード */
+.pv-hist-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+  transition: background .1s, border-color .1s;
+}
+.pv-hist-card:hover { background: var(--surface2); }
+.pv-hist-card.current {
+  background: var(--accent-lt);
+  border-color: var(--accent);
+}
+
+/* 履歴カード サムネイル */
+.pv-hist-thumb {
+  width: 36px;
+  height: 24px;
+  border-radius: 3px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+}
+.pv-hist-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.pv-hist-info { flex: 1; min-width: 0; }
+.pv-hist-num  { font-size: 8px; color: var(--text4); font-family: 'JetBrains Mono', monospace; }
+.pv-hist-name {
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pv-hist-card.current .pv-hist-name { color: var(--accent); font-weight: 700; }
+
+/* 現在地インジケーター */
+.pv-hist-current-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* 履歴フッター */
+.pv-hist-foot {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.btn-sec {
+  width: 100%;
+  height: 28px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text2);
+  cursor: pointer;
+}
+.btn-sec:hover { background: var(--border); }
+
+/* ============================================================
+   「最初から」FAB ボタン
+   index.html の「現在のステップへ」と同じ挙動
+   history.length > 1 のとき右下に表示
+   ============================================================ */
+.pv-start-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 500;
+  display: none; /* JS で制御 */
+  align-items: center;
+  gap: 5px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(55,66,250,0.4);
+  transition: background .15s, transform .1s;
+  white-space: nowrap;
+}
+.pv-start-fab:hover { background: #2536e8; transform: translateY(-2px); }
+.pv-start-fab:active { transform: translateY(0); }
+
+/* ============================================================
+   フラッシュ・モーダル・ヘルプ
+   ============================================================ */
+.flash-overlay { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 9999; transition: opacity .05s; }
+@keyframes flash { 0%{opacity:.35} 100%{opacity:0} }
+.flash-overlay.flash { animation: flash .15s ease-out forwards; }
+
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 500; display: none; align-items: center; justify-content: center; }
+.modal-bg.show { display: flex; }
+.modal-box { background: var(--surface); border-radius: 12px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.25); color: var(--text); }
+.modal { background: var(--surface); border-radius: 12px; padding: 22px; width: 340px; max-width: 90vw; box-shadow: var(--shadow-md); }
+.modal-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+.modal-input { width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 13px; font-family: inherit; margin-bottom: 14px; background: var(--surface); color: var(--text); }
+.modal-input:focus { outline: none; border-color: var(--accent); }
+.modal-actions { display: flex; gap: 7px; justify-content: flex-end; }
+.btn-primary { height: 30px; padding: 0 14px; background: var(--accent); border: none; border-radius: 5px; color: #fff; font-size: 12px; font-family: inherit; cursor: pointer; }
+.btn-cancel  { height: 30px; padding: 0 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; color: var(--text2); font-size: 12px; font-family: inherit; cursor: pointer; }
+
+/* tab-btn（ヘッダー内） */
+header.hd .tab-btn { height:30px;padding:0 12px;border:none;border-radius:6px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;white-space:nowrap;transition:all .12s; }
+header.hd .tab-btn:hover { background:rgba(255,255,255,.22);color:#fff; }
+header.hd .tab-btn.active { background:rgba(255,255,255,.28);color:#fff;font-weight:700; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ダークモード */
+html[data-theme="dark"] .pv-hist-card:hover { background: var(--surface2); }
+html[data-theme="dark"] .flow-thumb-card:hover,
+html[data-theme="dark"] .flow-thumb-card.active { background: var(--accent-lt); }
+html[data-theme="dark"] .pat-acc-header { background: var(--surface2); }
+html[data-theme="dark"] .pat-acc-header.open { background: var(--accent-lt); }
+html[data-theme="dark"] .scr-acc-item:hover { background: var(--surface2); }
+html[data-theme="dark"] .modal-box { background: var(--surface); border: 1px solid var(--border); }
+</style>
 </head>
 <body class="page-screen">
 <div class="flash-overlay" id="flashOverlay"></div>
 
-<!-- HEADER -->
+<!-- ===== HEADER ===== -->
 <header class="hd">
   <div class="hd-left">
     <button id="menuBtn" onclick="toggleSideMenu()">☰</button>
@@ -19,15 +509,17 @@
     <button class="help-circle-btn" onclick="openScreenHelp()" title="使い方マニュアル">?</button>
   </div>
   <div class="hd-center">
-    <button class="tab-btn active" id="tabBtnFlow" onclick="switchTab('flow')">🔀 フロー図</button>
-    <button class="tab-btn" id="tabBtnPreview" onclick="switchTab('preview')">▶ プレビュー</button>
+    <button class="tab-btn active" id="tabBtnFlow"    onclick="switchTab('flow')">🔀 フロー図</button>
+    <button class="tab-btn"        id="tabBtnPreview" onclick="switchTab('preview')">▶ プレビュー</button>
   </div>
   <div class="hd-right">
     <button class="nav-btn" onclick="openNamedTab('index.html','scriptTab')">📋 スクリプト</button>
     <button class="nav-btn" onclick="openNamedTab('mail.html','mailTab')">✉️ メール</button>
-    <!-- 画面遷移：自ページのため非表示 -->
-    <button class="nav-btn" onclick="triggerImport()" title="JSONファイルを読み込んでデータを更新">📤 データ更新</button>
-    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+    <!--
+      「データ更新」: 開いているファイルと同じフォルダのJSONを選択して反映。
+      File System Access API（Chrome/Edge）を使用。ページリロードなしで反映。
+    -->
+    <button class="nav-btn" onclick="triggerImportLocal()" title="JSONファイルを読み込んでデータを更新">📤 データ更新</button>
     <div class="quick-copy-area">
       <button class="nav-btn nav-btn-green" id="quickCopyBtn" onclick="toggleQuickMenu()">💬 定型文</button>
       <div class="quick-menu" id="quickMenu"></div>
@@ -38,130 +530,127 @@
 
 <aside id="sideMenu"></aside>
 
-<!-- BODY -->
+<!-- ===== BODY ===== -->
 <div class="body">
 
-  <!-- PATTERN SIDEBAR (常に表示) -->
-  <aside class="pattern-sidebar" id="patternSidebar">
-    <div class="psb-head">
-      <span class="psb-title">📂 パターン</span>
-
+  <!-- ===== 左サイドバー（アコーディオン） =====
+       パターン一覧と画面一覧を1カラムで統合表示。
+       「画面一覧」の独立した列は廃止。
+  -->
+  <aside class="scr-sidebar" id="scrSidebar">
+    <div class="scr-sidebar-head">
+      <!-- 要件：「📂 パターン」→「📂 コンテンツ一覧（○件）」 -->
+      <span class="scr-content-count" id="scrContentCount">📂 コンテンツ一覧（0件）</span>
     </div>
-    <div class="psb-list" id="patternSidebarList"><div style="padding:12px;font-size:11px;color:var(--text4);text-align:center">パターンなし</div></div>
+    <!-- パターンアコーディオンリスト（JS が描画） -->
+    <div class="scr-acc-list" id="scrAccList"></div>
   </aside>
 
-  <!-- SIDEBAR（編集時のみ表示） -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sb-head">
-      <div class="sb-head-row">
-        <span class="sb-title">画面一覧</span>
-      </div>
-      <!-- パターン管理バー（非表示） -->
-      <div class="pattern-mgr" id="patternMgrBar" style="display:none"></div>
-    </div>
-    <div class="screens-list" id="screensList"><div style="text-align:center;padding:20px 12px;color:var(--text4);font-size:11px;">画面がありません</div></div>
-    <div class="sb-foot" id="sbFoot">画面を追加してください</div>
-  </aside>
-
-  <!-- MAIN -->
+  <!-- ===== メインエリア ===== -->
   <main class="main">
 
-    <!-- FLOW TAB -->
-    <div class="tab-page flow-page active" id="tabFlow">
-      <div class="flow-bar">
-        <span class="flow-title">🔀 フロー図</span>
-      </div>
-      <div class="flow-content">
-        <div class="flow-row" id="flowRow"><div class="flow-empty"><span style="font-size:36px">📭</span><span>パターンを選択し、編集モードで画面を追加してください</span></div></div>
-      </div>
-    </div>
+    <!-- センターエリア（タブ切り替え） -->
+    <div class="scr-center-area">
 
-    <!-- PREVIEW TAB -->
-    <div class="tab-page preview-page" id="tabPreview">
-      <div class="pv-main">
-        <div class="pv-bar">
-          <span class="pv-hint">🖱 青枠クリックで遷移</span>
+      <!-- ===== フロー図タブ ===== -->
+      <div class="tab-page flow-page active" id="tabFlow">
+        <div class="flow-bar">
+          <span class="flow-title">🔀 フロー図</span>
+          <span class="flow-pat-lbl" id="flowPatLbl"></span>
+        </div>
+        <div class="flow-content">
+          <div id="flowThumbRow">
+            <div class="flow-empty">
+              <span style="font-size:36px">📭</span>
+              <span>左のサイドバーからパターンを選択してください</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="pv-right">
-        <div class="pv-right-hd">遷移履歴</div>
-        <div class="pv-actions"><button class="btn-sec" onclick="resetPvHistory()">🔄 最初から</button></div>
-      </div>
-    </div>
 
+      <!-- ===== プレビュータブ ===== -->
+      <div class="tab-page preview-page" id="tabPreview">
+        <div class="pv-main">
+          <div class="pv-bar">
+            <span class="pv-title" id="pvTitle"></span>
+            <span class="pv-badge" id="pvBadge"></span>
+            <span class="pv-hint">🖱 青枠クリックで遷移</span>
+          </div>
+          <div class="pv-canvas-wrap" id="pvCanvasWrap">
+            <div style="color:var(--text4);padding:40px;font-size:12px;text-align:center;width:100%;">
+              <div style="font-size:36px;margin-bottom:10px">🖼️</div>
+              フロー図のサムネイルをクリックしてプレビューを開始してください
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.scr-center-area -->
+
+    <!-- 右: 遷移履歴サイドバー（常時表示） -->
+    <div class="pv-hist-sidebar">
+      <div class="pv-hist-head">遷移履歴</div>
+      <div class="pv-hist-list" id="pvHist"></div>
+      <div class="pv-hist-foot"></div>
+    </div>
 
   </main>
-</div>
+</div><!-- /.body -->
 
-<!-- ヘルプモーダル -->
+<!--
+  「最初から」FABボタン。
+  要件：「最初にもどる」を index.html「現在のステップ」と同じ処理にする。
+  pvHistory.length > 1 のとき画面右下に表示される。
+  クリックすると pvHistory[0]（最初の画面）へ戻る。
+-->
+<button class="pv-start-fab" id="pvStartFab" onclick="resetToStart()" style="display:none;">🔝 最初から</button>
+
+<!-- ===== ヘルプモーダル ===== -->
 <div class="modal-bg" id="screenHelpModal" onclick="if(event.target===this)closeScreenHelp()">
-  <div class="modal-box" style="width:min(90vw,520px);max-height:85vh;overflow-y:auto;">
-    <div class="modal-title">❓ 画面遷移ツール 使い方マニュアル
+  <div class="modal-box" style="width:min(90vw,500px);max-height:85vh;overflow-y:auto;border-radius:12px;">
+    <div class="modal-title">❓ 画面遷移ツール 使い方
       <button onclick="closeScreenHelp()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);">✕</button>
     </div>
-    <div style="font-size:12px;color:var(--text);line-height:1.8;display:flex;flex-direction:column;gap:14px;padding-top:4px;">
-      <div><div style="font-weight:700;color:var(--accent);margin-bottom:4px;">📂 パターン管理</div>
+    <div style="font-size:12px;color:var(--text);line-height:1.8;display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <div style="font-weight:700;color:var(--accent);margin-bottom:4px;">📂 パターン管理</div>
         <ul style="padding-left:16px;display:flex;flex-direction:column;gap:3px;">
-          <li>編集モード時に「＋」でパターンを追加</li>
-          <li>選択中のパターン名を直接クリックして編集可能（編集モード時）</li>
-          <li>「✕」でパターンを削除</li>
-        </ul></div>
-      <div><div style="font-weight:700;color:var(--accent);margin-bottom:4px;">⚙ 編集モード</div>
+          <li>「＋ パターンを追加」でパターンを作成</li>
+          <li>パターン名をクリックして展開 / 再クリックで格納</li>
+          <li>展開時にパターン内の画面一覧が表示されます</li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--accent);margin-bottom:4px;">🔀 フロー図</div>
         <ul style="padding-left:16px;display:flex;flex-direction:column;gap:3px;">
-          <li>「⚙ 編集」タブ → パスワード入力で有効化</li>
-          <li>左サイドバー下部のファイル選択で画面を登録（複数選択可）</li>
-          <li>アップロードエリアへのドラッグ&amp;ドロップも可能</li>
-          <li>「✂️ 画像をリサイズ・トリミング」で画像を編集</li>
-          <li>画像上をドラッグしてホットスポット（遷移エリア）を作成</li>
-        </ul></div>
-      <div><div style="font-weight:700;color:var(--accent);margin-bottom:4px;">💾 上書き保存</div>
+          <li>選択中パターンの画面をサムネイルで一覧表示</li>
+          <li>サムネイルをクリックするとその画面からプレビューを開始</li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--accent);margin-bottom:4px;">▶ プレビュー</div>
         <ul style="padding-left:16px;display:flex;flex-direction:column;gap:3px;">
-          <li>初回は保存先を選択、2回目以降は同じファイルに上書き（Chrome/Edge）</li>
-        </ul></div>
+          <li>青枠（ホットスポット）をクリックで遷移先へ移動</li>
+          <li>右の遷移履歴カードをクリックで過去の画面に戻れます</li>
+          <li>「🔝 最初から」で最初の画面に戻ります</li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--accent);margin-bottom:4px;">📤 データ更新</div>
+        <ul style="padding-left:16px;display:flex;flex-direction:column;gap:3px;">
+          <li>admin.html でエクスポートした JSON ファイルを選択して反映</li>
+          <li>ページリロードなしでデータが即時更新されます</li>
+        </ul>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- 画像リサイズ・トリミング モーダル -->
-<div class="modal-bg" id="cropModal" onclick="if(event.target===this)closeCropModal()">
-  <div class="modal-box" style="width:min(92vw,760px);max-height:92vh;display:flex;flex-direction:column;gap:10px;">
-    <div class="modal-title">✂️ 画像を編集
-      <button onclick="closeCropModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);">✕</button>
-    </div>
-    <!-- サイズ入力 + モードボタン -->
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0;border-bottom:1px solid var(--border);padding-bottom:12px;">
-      <span style="font-size:11px;font-weight:600;color:var(--text2);">サイズ指定（px）</span>
-      <input id="resizeW" type="number" placeholder="幅" style="width:72px;height:30px;border:1px solid var(--border);border-radius:5px;padding:0 8px;font-size:12px;font-family:inherit;background:var(--surface2);color:var(--text);">
-      <span style="font-size:12px;color:var(--text3);">×</span>
-      <input id="resizeH" type="number" placeholder="高さ" style="width:72px;height:30px;border:1px solid var(--border);border-radius:5px;padding:0 8px;font-size:12px;font-family:inherit;background:var(--surface2);color:var(--text);">
-      <span id="cropOrigSize" style="font-size:10px;color:var(--text4);margin-left:2px;"></span>
-      <div style="display:flex;gap:6px;margin-left:auto;">
-        <button id="btnModeResize" onclick="setCropMode('resize')" style="height:30px;padding:0 14px;background:var(--accent);border:none;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;color:#fff;font-weight:600;">↔ リサイズ</button>
-        <button id="btnModeTrim" onclick="setCropMode('trim')" style="height:30px;padding:0 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text);">✂️ トリミング</button>
-      </div>
-    </div>
-    <!-- トリミング時のみ表示 -->
-    <div id="cropTrimSection" style="display:none;flex-direction:column;gap:8px;">
-      <div id="cropCanvasArea" style="min-height:300px;background:#111;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:crosshair;position:relative;"></div>
-      <div style="display:flex;gap:10px;align-items:center;">
-        <span style="font-size:11px;color:var(--text2);">ズーム</span>
-        <input id="cropZoomSlider" type="range" min="0.3" max="3" step="0.05" value="1" style="width:110px;accent-color:var(--accent);">
-        <span id="cropSizeInfo" style="font-size:11px;color:var(--text3);margin-left:auto;"></span>
-      </div>
-    </div>
-    <!-- フッター -->
-    <div style="padding-top:6px;display:flex;justify-content:flex-end;gap:8px;">
-      <button onclick="closeCropModal()" style="height:32px;padding:0 16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text);">キャンセル</button>
-      <button id="cropApplyBtn" onclick="applyCropMode()" style="height:32px;padding:0 18px;background:var(--accent);border:none;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;color:#fff;font-weight:600;">↔ リサイズを適用</button>
-    </div>
-  </div>
-</div>
-
-<!-- パターン名モーダル -->
+<!-- ===== パターン名入力モーダル ===== -->
 <div class="modal-bg" id="patModal">
   <div class="modal">
     <div class="modal-title" id="patModalTitle">パターンを追加</div>
-    <input class="modal-input" id="patModalInput" placeholder="パターン名" onkeydown="if(event.key==='Enter')confirmPat()">
+    <input class="modal-input" id="patModalInput" placeholder="パターン名を入力" onkeydown="if(event.key==='Enter')confirmPat();if(event.key==='Escape')closePat();">
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closePat()">キャンセル</button>
       <button class="btn-primary" onclick="confirmPat()">OK</button>
@@ -169,133 +658,192 @@
   </div>
 </div>
 
-<!-- データ埋め込み領域 -->
-<script id="sft-data" type="application/json">[
-  {
-  }
-]</script>
+<!-- 埋め込みデータ（未設定時は空配列、localStorage へフォールバック） -->
+<script id="sft-data" type="application/json">[]</script>
 
 <script>
-// =====================================================
-// STATE
-// =====================================================
-let patterns = [];          // [{id,name,screens:[{id,name,note,imageSrc,hotspots:[]}]}]
-let currentPatId = null;
-let selScreenId  = null;
-let pvCurrentId  = null;
-let pvHistory    = [];
-let isDrawing = false, drawStart = null;
-let _sortable = null;
-let _editUnlocked = false;
-let _editingPatId = null;  // インライン編集中のパターンID
-const EDIT_PW = 'admin1234';
-let _patModalMode = 'add', _patModalEditId = null;
+// ============================================================
+// STATE（アプリ全体の状態変数）
+// ============================================================
+let patterns     = [];    // [{id, name, screens:[{id,name,imageSrc,hotspots:[]}]}]
+let currentPatId = null;  // 現在展開中のパターンID（フロー図 / アコーディオン）
+let pvCurrentId  = null;  // プレビューで表示中の画面ID
+let pvHistory    = [];    // プレビュー遷移履歴（画面IDの配列）
 
-// =====================================================
+let _patModalMode  = 'add';
+let _patModalEditId = null;
+
+// ============================================================
 // UTILS
-// =====================================================
-const genId = () => 'id' + Math.random().toString(36).substr(2,8);
+// ============================================================
 
-function openScreenHelp() { const m=document.getElementById('screenHelpModal');if(m)m.classList.add('show'); }
-function closeScreenHelp() { const m=document.getElementById('screenHelpModal');if(m)m.classList.remove('show'); }
-document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeScreenHelp(); closeCropModal&&closeCropModal(); } });
-const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ランダムIDを生成（パターン・画面の識別子）
+const genId = () => 'id' + Math.random().toString(36).substr(2, 8);
 
-function getPat()       { return patterns.find(p => p.id === currentPatId) || null; }
-function getScreens()   { const p = getPat(); return p ? p.screens : []; }
-function getScreen(id)  { return getScreens().find(s => s.id === id); }
-function getSelScreen() { return getScreen(selScreenId); }
+// HTML特殊文字エスケープ（innerHTML への安全な挿入のため）
+const esc = s => !s ? '' : String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-// =====================================================
-// SAVE
-// =====================================================
+// localStorage からメールテンプレートを読み込む（ホットスポットの表示に使用）
+function _loadMailTemplates() {
+  try { const s = localStorage.getItem('mailTemplates'); return s ? JSON.parse(s) : []; }
+  catch(e) { return []; }
+}
 
+// 現在のパターンを取得する
+function getPat()      { return patterns.find(p => p.id === currentPatId) || null; }
+// 現在のパターンの画面リストを取得する
+function getScreens()  { const p = getPat(); return p ? p.screens : []; }
+// IDで画面を取得する
+function getScreen(id) { return getScreens().find(s => s.id === id); }
+
+// ============================================================
+// ヘルプ・各種ダイアログ
+// ============================================================
+function openScreenHelp()  { const m = document.getElementById('screenHelpModal'); if(m) m.classList.add('show'); }
+function closeScreenHelp() { const m = document.getElementById('screenHelpModal'); if(m) m.classList.remove('show'); }
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeScreenHelp(); });
+
+// ============================================================
+// データ保存（localStorage に書き込む）
+// ============================================================
 function markDirty() {
-  try { localStorage.setItem('screenFlowData', JSON.stringify(patterns)); } catch(e) {}
+  try { localStorage.setItem('screenFlowData', JSON.stringify(patterns)); }
+  catch(e) {}
 }
 
-// =====================================================
-// PATTERN
-// =====================================================
-function renderPatSelect() {
-  // プルダウン廃止 → サイドバーを更新
-  renderPatternSidebar();
-}
-
-function renderPatternSidebar() {
-  var list = document.getElementById('patternSidebarList');
-  if (!list) return;
-  if (!patterns.length) {
-    list.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text4);text-align:center">パターンなし</div>';
-    return;
+// ============================================================
+// データ更新（JSON インポート・ページリロードなし）
+// File System Access API（Chrome/Edge 用）を使用。
+// ページを開いているフォルダと同じ場所から JSON を選択できる。
+// ============================================================
+async function triggerImportLocal() {
+  // showDirectoryPickerでフォルダごと選択 (Chrome/Edge)
+  if (window.showDirectoryPicker) {
+    try {
+      const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+      const jsonFiles = [];
+      for await (const [name, handle] of dirHandle) {
+        if (handle.kind === 'file' && name.endsWith('.json')) jsonFiles.push({ name, handle });
+      }
+      if (jsonFiles.length === 0) { alert('フォルダ内にJSONファイルが見つかりません。'); return; }
+      let target = jsonFiles[0];
+      if (jsonFiles.length > 1) {
+        const names = jsonFiles.map((f,i) => (i+1)+': '+f.name).join('\n');
+        const idx = parseInt(prompt('読み込むJSONファイルを番号で選んでください:\n\n'+names)) - 1;
+        if (isNaN(idx) || idx < 0 || idx >= jsonFiles.length) return;
+        target = jsonFiles[idx];
+      }
+      const file = await target.handle.getFile();
+      _applyImportedData(await file.text());
+      return;
+    } catch(e) { if (e.name === 'AbortError') return; }
   }
-  list.innerHTML = patterns.map(function(p) {
-    var isActive = p.id === currentPatId;
-    if (_editUnlocked && _editingPatId === p.id) {
-      // 編集中パターン → インライン名前入力欄
-      return '<div class="psb-item active">' +
-        '<input class="psb-name-edit" value="' + esc(p.name) + '"' +
-          ' onclick="event.stopPropagation()"' +
-          ' onblur="commitPatName(\'' + p.id + '\',this.value)"' +
-          ' onkeydown="if(event.key===\'Enter\'){this.blur();}if(event.key===\'Escape\'){_editingPatId=null;renderPatternSidebar();}"' +
-          ' title="Enter で確定 / Esc でキャンセル">' +
-        '<button class="psb-item-del" onclick="event.stopPropagation();deletePat(\'' + p.id + '\')" title="削除">✕</button>' +
-      '</div>';
+  if (window.showOpenFilePicker) {
+    try {
+      const [fh] = await window.showOpenFilePicker({
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+        multiple: false
+      });
+      _applyImportedData(await (await fh.getFile()).text());
+    } catch(e) {
+      if (e.name !== 'AbortError') document.getElementById('importFileFallback').click();
     }
-    return '<div class="psb-item' + (isActive ? ' active' : '') + '" onclick="selectPattern(\'' + p.id + '\')">' +
-      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:' + (_editUnlocked && isActive ? 'text' : 'pointer') + '"' +
-        (_editUnlocked && isActive ? ' onclick="event.stopPropagation();startEditPat(\'' + p.id + '\')" title="クリックして名前を編集"' : '') +
-        '>' + esc(p.name) + '</span>' +
-      (_editUnlocked ? '<button class="psb-item-del" onclick="event.stopPropagation();deletePat(\'' + p.id + '\')" title="削除">✕</button>' : '') +
-    '</div>';
-  }).join('');
+  } else {
+    document.getElementById('importFileFallback').click();
+  }
 }
 
-function startEditPat(id) {
-  _editingPatId = id;
-  renderPatternSidebar();
-  // 描画後にフォーカス＆末尾にカーソル
-  setTimeout(() => {
-    const inp = document.querySelector('.psb-name-edit');
-    if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
-  }, 20);
+// フォールバック用 input（非表示）
+document.addEventListener('DOMContentLoaded', function() {
+  const inp = document.createElement('input');
+  inp.type    = 'file';
+  inp.accept  = '.json';
+  inp.id      = 'importFileFallback';
+  inp.style.display = 'none';
+  inp.addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => _applyImportedData(e.target.result);
+    reader.readAsText(file);
+    this.value = '';
+  });
+  document.body.appendChild(inp);
+});
+
+/**
+ * インポートした JSON テキストを解析してデータを反映する。
+ * common-utils.js の実装とは別に、ページリロードなしで即時反映する。
+ */
+function _applyImportedData(text) {
+  try {
+    const raw = JSON.parse(text);
+    let screenData = null;
+
+    // version:2 の統合JSONフォーマットに対応
+    if (raw && (raw.version === 2 || raw.version === 1) && Array.isArray(raw.screenData)) {
+      screenData = raw.screenData;
+      // スクリプト・メールデータも localStorage に保存しておく
+      if (raw.talkScripts)  localStorage.setItem('talkScripts',   JSON.stringify(raw.talkScripts));
+      if (raw.mailTemplates) localStorage.setItem('mailTemplates', JSON.stringify(raw.mailTemplates));
+    }
+    // screenData 単独配列にも対応
+    else if (Array.isArray(raw) && raw.length && raw[0].screens !== undefined) {
+      screenData = raw;
+    }
+
+    if (!screenData || !screenData.length) {
+      toast('⚠️ 画面遷移データが見つかりませんでした');
+      return;
+    }
+
+    // メモリ上のデータを更新して localStorage にも保存
+    patterns = screenData;
+    localStorage.setItem('screenFlowData', JSON.stringify(patterns));
+
+    // 先頭パターンを選択して再描画
+    currentPatId = patterns[0]?.id || null;
+    pvCurrentId  = null;
+    pvHistory    = [];
+    renderSidebar();
+    renderFlow();
+    _pvClearCanvas();
+    updateStartFab();
+    toast('✅ データを更新しました');
+  } catch(e) {
+    toast('❌ 読み込みに失敗しました: ' + e.message);
+  }
 }
 
-function commitPatName(id, name) {
-  _editingPatId = null;  // 先にリセットしてから再描画
-  renamePat(id, name);
+// 軽量 toast（style.css の #toast を使う）
+let _toastTimer;
+function toast(msg) {
+  let el = document.getElementById('scrToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'scrToast';
+    el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2f3542;color:white;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:600;pointer-events:none;z-index:9999;opacity:0;transition:opacity .25s;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.style.opacity = '0'; }, 2800);
 }
 
-function renamePat(id, name) {
-  name = (name || '').trim(); if (!name) return;
-  const p = patterns.find(x => x.id === id); if (!p) return;
-  p.name = name; markDirty(); renderPatternSidebar();
-  document.getElementById('flowPatLbl').textContent = currentPatId === id ? '— ' + name : document.getElementById('flowPatLbl').textContent;
-}
+// ============================================================
+// PATTERN（パターン管理）
+// ============================================================
 
-function renderPatMgr() {
-  const bar = document.getElementById('patternMgrBar');
-  if (bar) bar.innerHTML = ''; // パターン管理バーは非使用（パターンサイドバーに統合）
-}
-
-function selectPattern(id) {
-  currentPatId = id;
-  selScreenId = null; pvCurrentId = null; pvHistory = [];
-  renderPatSelect();
-  renderPatMgr();
-  renderSidebar();
-  renderFlow();
-  renderPvList();
-  showCanvasEmpty(); showNoSel();
-  const p = getPat();
-  document.getElementById('flowPatLbl').textContent = p ? '— ' + p.name : '';
-}
-
+/** パターン追加モーダルを開く */
 function openPatModal(mode, id) {
-  _patModalMode = mode; _patModalEditId = id || null;
+  _patModalMode   = mode;
+  _patModalEditId = id || null;
   document.getElementById('patModalTitle').textContent = mode === 'add' ? 'パターンを追加' : 'パターン名を変更';
   const inp = document.getElementById('patModalInput');
-  inp.value = mode === 'rename' ? (patterns.find(p=>p.id===id)||{name:''}).name : '';
+  inp.value = mode === 'rename' ? (patterns.find(p => p.id === id) || {name:''}).name : '';
   document.getElementById('patModal').classList.add('show');
   setTimeout(() => inp.focus(), 40);
 }
@@ -306,82 +854,137 @@ function closePat() {
 function confirmPat() {
   const name = document.getElementById('patModalInput').value.trim();
   if (!name) return;
-  closePat(); // 先にモーダルを閉じて二重追加を防ぐ
+  closePat();
   if (_patModalMode === 'add') {
     const p = { id: genId(), name, screens: [] };
     patterns.push(p);
-    selectPattern(p.id);
+    currentPatId = p.id;  // 追加したパターンを選択状態に
   } else {
     const p = patterns.find(x => x.id === _patModalEditId);
-    if (p) { p.name = name; renderPatSelect(); }
+    if (p) p.name = name;
   }
   markDirty();
-}
-document.getElementById('patModal').addEventListener('click', e => { if (e.target === e.currentTarget) closePat(); });
-
-function deletePat(id) {
-  const p = patterns.find(x => x.id === id);
-  if (!p || !confirm(`パターン「${p.name}」を削除しますか？`)) return;
-  patterns = patterns.filter(x => x.id !== id);
-  if (currentPatId === id) currentPatId = patterns.length ? patterns[0].id : null;
-  renderPatSelect(); selectPattern(currentPatId); markDirty();
-}
-
-// =====================================================
-// SCREENS
-// =====================================================
-function addScreen(name, imgSrc) {
-  const p = getPat();
-  if (!p) { alert('先にパターンを選択してください'); return; }
-  const num = p.screens.length + 1;
-  const s = { id: genId(), name: name || `画面 ${num}`, note:'', imageSrc: imgSrc||null, hotspots:[] };
-  p.screens.push(s);
-  renderSidebar(); selectScreen(s.id); markDirty();
-  return s;
-}
-
-function deleteScreen(id, e) {
-  e.stopPropagation();
-  const s = getScreen(id);
-  if (!s || !confirm(`「${s.name}」を削除しますか？`)) return;
-  const p = getPat();
-  p.screens = p.screens.filter(x => x.id !== id);
-  p.screens.forEach(x => { x.hotspots = x.hotspots.filter(h => h.targetId !== id); });
-  if (selScreenId === id) { selScreenId = null; showCanvasEmpty(); showNoSel(); }
-  renderSidebar(); renderFlow(); markDirty();
-}
-
-function selectScreen(id) {
-  selScreenId = id;
   renderSidebar();
-  renderEditorPanel(getScreen(id));
-  renderHotspots();
+  renderFlow();
+}
+document.getElementById('patModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closePat();
+});
+
+/** パターンアコーディオンを開閉する */
+function togglePatAcc(id) {
+  if (currentPatId === id) {
+    // 同じパターンをクリック → 折りたたむ
+    currentPatId = null;
+  } else {
+    currentPatId = id;
+  }
+  renderSidebar();
+  renderFlow();
+  updateFlowPatLabel();
 }
 
-function updateSel() {
-  const s = getSelScreen(); if (!s) return;
-  s.name = document.getElementById('scrNameInput').value;
-  s.note = document.getElementById('scrNoteInput').value;
-  renderSidebar(); markDirty();
+/** フロー図ヘッダーのパターン名ラベルを更新する */
+function updateFlowPatLabel() {
+  const lbl = document.getElementById('flowPatLbl');
+  const p   = getPat();
+  if (lbl) lbl.textContent = p ? '— ' + p.name : '';
 }
 
-// 一括インポート
-function bulkImport(e) {
-  const p = getPat();
-  if (!p) { alert('先にパターンを選択してください'); return; }
-  const files = Array.from(e.target.files).sort((a,b) => a.name.localeCompare(b.name,'ja',{numeric:true}));
+// ============================================================
+// SIDEBAR（アコーディオン形式）
+// パターンと画面を1カラムで表示。画面のD&D・削除は無効。
+// ============================================================
+function renderSidebar() {
+  const list    = document.getElementById('scrAccList');
+  const countEl = document.getElementById('scrContentCount');
+  if (!list) return;
+
+  // 全パターンの画面数の合計を表示する
+  const total = patterns.reduce((a, p) => a + p.screens.length, 0);
+  if (countEl) countEl.textContent = `📂 コンテンツ一覧（${total}件）`;
+
+  if (!patterns.length) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text4);font-size:11px;">パターンがありません</div>';
+    return;
+  }
+
+  list.innerHTML = patterns.map(p => {
+    const isOpen = p.id === currentPatId;
+
+    // パターン内の画面アイテムを生成
+    const screenItems = p.screens.map((s, i) => {
+      const isActive = s.id === pvCurrentId && p.id === currentPatId;
+      const thumbHtml = s.imageSrc
+        ? `<img src="${s.imageSrc}" alt="${esc(s.name)}">`
+        : '<span style="font-size:10px">🖼️</span>';
+      return `
+        <div class="scr-acc-item ${isActive ? 'active' : ''}"
+             onclick="startPreviewFromSidebar('${s.id}', '${p.id}')">
+          <div class="scr-acc-thumb">${thumbHtml}</div>
+          <div class="scr-acc-info">
+            <div class="scr-acc-num">SCR-${String(i+1).padStart(2,'0')}</div>
+            <div class="scr-acc-name">${esc(s.name)}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    // 画面がない場合のメッセージ
+    const emptyMsg = p.screens.length === 0
+      ? `<div class="scr-acc-empty">画面がありません</div>` : '';
+
+    return `
+      <div class="pat-acc-block" data-pat-id="${p.id}">
+        <div class="pat-acc-header ${isOpen ? 'open' : ''}"
+             onclick="togglePatAcc('${p.id}')">
+          <span class="pat-acc-arrow ${isOpen ? 'open' : ''}">▶</span>
+          <span class="pat-acc-name">${esc(p.name)}</span>
+          <span class="pat-acc-count">${p.screens.length}画面</span>
+        </div>
+        <div class="pat-acc-body ${isOpen ? 'open' : ''}">
+          ${emptyMsg}
+          ${screenItems}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/**
+ * サイドバーの画面アイテムをクリックしたとき。
+ * パターンを選択状態にしてプレビューを開始する。
+ */
+function startPreviewFromSidebar(screenId, patId) {
+  if (currentPatId !== patId) {
+    currentPatId = patId;
+    renderFlow();
+    updateFlowPatLabel();
+  }
+  startPreviewFrom(screenId);
+}
+
+// ============================================================
+// ファイル追加（パターン内に画像を一括追加）
+// ============================================================
+function bulkImportToPat(e, patId) {
+  const pat = patterns.find(p => p.id === patId);
+  if (!pat) return;
+  const files = Array.from(e.target.files).sort((a, b) =>
+    a.name.localeCompare(b.name, 'ja', { numeric: true }));
   if (!files.length) return;
   let done = 0, firstId = null;
   files.forEach(file => {
     const reader = new FileReader();
     reader.onload = ev => {
-      const name = file.name.replace(/\.[^.]+$/,'');
-      const s = { id: genId(), name, note:'', imageSrc: ev.target.result, hotspots:[] };
-      p.screens.push(s);
+      const name = file.name.replace(/\.[^.]+$/, '');
+      const s    = { id: genId(), name, imageSrc: ev.target.result, hotspots: [] };
+      pat.screens.push(s);
       if (firstId === null) firstId = s.id;
       if (++done === files.length) {
-        renderSidebar(); renderFlow(); markDirty();
-        selectScreen(firstId);
+        markDirty();
+        renderSidebar();
+        renderFlow();
+        // 追加した最初の画面からプレビューを開始する
+        if (firstId) startPreviewFromSidebar(firstId, patId);
       }
     };
     reader.readAsDataURL(file);
@@ -389,627 +992,322 @@ function bulkImport(e) {
   e.target.value = '';
 }
 
-// =====================================================
-// SIDEBAR
-// =====================================================
-function renderSidebar() {
-  const list = document.getElementById('screensList');
-  const screens = getScreens();
-  list.innerHTML = '';
-
-  if (!screens.length) {
-    list.innerHTML = '<div style="text-align:center;padding:20px 12px;color:var(--text4);font-size:11px;">画面がありません</div>';
-    document.getElementById('sbFoot').textContent = '画面を追加してください';
-    if (_sortable) { _sortable.destroy(); _sortable = null; }
-    return;
-  }
-
-  screens.forEach((s, i) => {
-    const el = document.createElement('div');
-    el.className = 'screen-item' + (s.id === selScreenId ? ' sel' : '');
-    el.dataset.id = s.id;
-    el.innerHTML = `
-      <span class="drag-handle" title="ドラッグで並べ替え">⠿</span>
-      <div class="scr-thumb">${s.imageSrc ? `<img src="${s.imageSrc}">` : '🖼️'}</div>
-      <div class="scr-info">
-        <div class="scr-num">SCR-${String(i+1).padStart(2,'0')}</div>
-        <div class="scr-name">${esc(s.name)}</div>
-        <div class="scr-hs">${s.hotspots.length ? `遷移 ${s.hotspots.length}件` : '遷移未設定'}</div>
-      </div>
-      <button class="scr-del" onclick="deleteScreen('${s.id}',event)" title="削除">✕</button>`;
-    el.addEventListener('click', ev => {
-      if (ev.target.closest('.scr-del,.drag-handle')) return;
-      selectScreen(s.id);
-    });
-    list.appendChild(el);
-  });
-
-  const total = screens.reduce((a,s) => a + s.hotspots.length, 0);
-  document.getElementById('sbFoot').textContent = `${screens.length}画面 / ${total}件の遷移`;
-
-  if (_sortable) _sortable.destroy();
-  _sortable = Sortable.create(list, {
-    animation: 150, handle: '.drag-handle', ghostClass: 'sortable-ghost',
-    onEnd: ev => {
-      const p = getPat(); if (!p) return;
-      const [moved] = p.screens.splice(ev.oldIndex, 1);
-      p.screens.splice(ev.newIndex, 0, moved);
-      renderSidebar(); renderFlow(); markDirty();
-    }
-  });
-}
-
-// =====================================================
-// EDITOR PANEL
-// =====================================================
-function renderEditorPanel(screen) {
-  if (!screen) { showNoSel(); showCanvasEmpty(); return; }
-  document.getElementById('noSelPanel').style.display = 'none';
-  document.getElementById('selPanel').style.display = 'block';
-  document.getElementById('scrNameInput').value = screen.name;
-  document.getElementById('scrNoteInput').value = screen.note;
-  screen.imageSrc ? showCanvas(screen.imageSrc) : showCanvasEmpty();
-  renderHsPanel(screen);
-}
-function showCanvasEmpty() {
-  document.getElementById('canvasEmpty').style.display = 'flex';
-  document.getElementById('canvasCont').style.display = 'none';
-}
-function showCanvas(src) {
-  document.getElementById('canvasEmpty').style.display = 'none';
-  document.getElementById('canvasCont').style.display = 'inline-block';
-  document.getElementById('canvasImg').src = src;
-  const editBtn = document.getElementById('editImgBtn');
-  if (editBtn) editBtn.style.display = 'block';
-}
-function showNoSel() {
-  document.getElementById('noSelPanel').style.display = 'flex';
-  document.getElementById('selPanel').style.display = 'none';
-}
-
-// =====================================================
-// IMAGE UPLOAD
-// =====================================================
-function handleImgUpload(e) {
-  const file = e.target.files[0]; if (!file) return;
-  const s = getSelScreen(); if (!s) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    s.imageSrc = ev.target.result;
-    showCanvas(s.imageSrc); renderSidebar(); renderHotspots(); markDirty();
-    const editBtn = document.getElementById('editImgBtn');
-    if (editBtn) editBtn.style.display = 'block';
-  };
-  reader.readAsDataURL(file); e.target.value = '';
-}
-
-// D&D でのアップロード
-function handleImgDrop(e) {
-  const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-  if (!file || !file.type.startsWith('image/')) return;
-  const s = getSelScreen(); if (!s) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    s.imageSrc = ev.target.result;
-    showCanvas(s.imageSrc); renderSidebar(); renderHotspots(); markDirty();
-    const editBtn = document.getElementById('editImgBtn');
-    if (editBtn) editBtn.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-}
-
-// =====================================================
-// IMAGE CROP / RESIZE
-// =====================================================
-let _cropImg = null, _cropSel = {x:0,y:0,w:1,h:1}, _cropDrag = null, _cropZoom = 1;
-let _cropImgNaturalW = 0, _cropImgNaturalH = 0;
-let _cropMode = 'resize'; // 'resize' | 'trim'
-
-function setCropMode(mode) {
-  _cropMode = mode;
-  const trimSec = document.getElementById('cropTrimSection');
-  const btnR = document.getElementById('btnModeResize');
-  const btnT = document.getElementById('btnModeTrim');
-  const applyBtn = document.getElementById('cropApplyBtn');
-  if (mode === 'trim') {
-    trimSec.style.display = 'flex';
-    btnR.style.background = 'var(--surface2)'; btnR.style.border = '1px solid var(--border)'; btnR.style.color = 'var(--text)'; btnR.style.fontWeight = '';
-    btnT.style.background = 'var(--accent)';   btnT.style.border = 'none';                    btnT.style.color = '#fff';        btnT.style.fontWeight = '600';
-    applyBtn.textContent = '✂️ トリミングを適用';
-    if (_cropImg) renderCropCanvas();
-  } else {
-    trimSec.style.display = 'none';
-    btnR.style.background = 'var(--accent)'; btnR.style.border = 'none';                    btnR.style.color = '#fff';        btnR.style.fontWeight = '600';
-    btnT.style.background = 'var(--surface2)'; btnT.style.border = '1px solid var(--border)'; btnT.style.color = 'var(--text)'; btnT.style.fontWeight = '';
-    applyBtn.textContent = '↔ リサイズを適用';
-  }
-}
-
-function applyCropMode() {
-  if (_cropMode === 'trim') { applyCrop(); } else { applyResize(); }
-}
-
-function openCropModal() {
-  const s = getSelScreen(); if (!s || !s.imageSrc) return;
-  const modal = document.getElementById('cropModal');
-  modal.classList.add('show');
-  _cropSel = {x:0, y:0, w:1, h:1}; _cropZoom = 1; _cropMode = 'resize';
-  // リセットUI
-  document.getElementById('cropTrimSection').style.display = 'none';
-  document.getElementById('cropZoomSlider').value = 1;
-  // モードボタン初期状態（リサイズ選択）
-  const btnR = document.getElementById('btnModeResize');
-  const btnT = document.getElementById('btnModeTrim');
-  btnR.style.cssText = 'height:30px;padding:0 14px;background:var(--accent);border:none;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;color:#fff;font-weight:600;';
-  btnT.style.cssText = 'height:30px;padding:0 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text);';
-  document.getElementById('cropApplyBtn').textContent = '↔ リサイズを適用';
-  const img = new Image();
-  img.onload = () => {
-    _cropImg = img;
-    _cropImgNaturalW = img.naturalWidth;
-    _cropImgNaturalH = img.naturalHeight;
-    // 元サイズ表示・入力欄に現在サイズをデフォルト設定
-    document.getElementById('cropOrigSize').textContent = `（元: ${img.naturalWidth} × ${img.naturalHeight} px）`;
-    document.getElementById('resizeW').value = img.naturalWidth;
-    document.getElementById('resizeH').value = img.naturalHeight;
-  };
-  img.src = s.imageSrc;
-}
-
-function closeCropModal() {
-  document.getElementById('cropModal').classList.remove('show');
-  _cropImg = null;
-}
-
-function renderCropCanvas() {
-  const area = document.getElementById('cropCanvasArea');
-  if (!_cropImg || !area) return;
-  const aW = area.clientWidth || 640;
-  const aH = area.clientHeight || 420;
-  const scale = Math.min(aW / _cropImg.naturalWidth, aH / _cropImg.naturalHeight) * _cropZoom;
-  const cW = Math.round(_cropImg.naturalWidth * scale);
-  const cH = Math.round(_cropImg.naturalHeight * scale);
-  let canvas = document.getElementById('cropCanvas');
-  if (!canvas) {
-    canvas = document.createElement('canvas');
-    canvas.id = 'cropCanvas';
-    area.innerHTML = '';
-    area.appendChild(canvas);
-  }
-  canvas.width = cW; canvas.height = cH;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(_cropImg, 0, 0, cW, cH);
-  // 選択範囲オーバーレイ
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.fillRect(0, 0, cW, cH);
-  const sx = _cropSel.x * cW, sy = _cropSel.y * cH;
-  const sw = _cropSel.w * cW, sh = _cropSel.h * cH;
-  ctx.clearRect(sx, sy, sw, sh);
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(sx, sy, sw, sh);
-  // ハンドル
-  [[sx,sy],[sx+sw,sy],[sx,sy+sh],[sx+sw,sy+sh]].forEach(([hx,hy])=>{
-    ctx.beginPath(); ctx.arc(hx,hy,6,0,Math.PI*2);
-    ctx.fillStyle='#fff'; ctx.fill();
-    ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent')||'#5c6afc';
-    ctx.lineWidth=2; ctx.stroke();
-  });
-  // サイズ表示
-  const pw = Math.round(_cropSel.w * _cropImg.naturalWidth);
-  const ph = Math.round(_cropSel.h * _cropImg.naturalHeight);
-  document.getElementById('cropSizeInfo').textContent = pw + ' × ' + ph + ' px';
-  // ドラッグイベント
-  canvas.onmousedown = e => {
-    const r = canvas.getBoundingClientRect();
-    const mx = (e.clientX-r.left)/cW, my = (e.clientY-r.top)/cH;
-    const eps = 12/cW;
-    const corners = [
-      {key:'tl',x:_cropSel.x,y:_cropSel.y},
-      {key:'tr',x:_cropSel.x+_cropSel.w,y:_cropSel.y},
-      {key:'bl',x:_cropSel.x,y:_cropSel.y+_cropSel.h},
-      {key:'br',x:_cropSel.x+_cropSel.w,y:_cropSel.y+_cropSel.h}
-    ];
-    for (const c of corners) {
-      if (Math.abs(mx-c.x)<eps && Math.abs(my-c.y)<eps) {
-        _cropDrag = {type:'corner',key:c.key,ox:mx,oy:my,sel:{..._cropSel}};
-        return;
-      }
-    }
-    if (mx>=_cropSel.x&&mx<=_cropSel.x+_cropSel.w&&my>=_cropSel.y&&my<=_cropSel.y+_cropSel.h) {
-      _cropDrag = {type:'move',ox:mx,oy:my,sel:{..._cropSel}};
-    } else {
-      _cropDrag = {type:'new',ox:mx,oy:my};
-    }
-  };
-  canvas.onmousemove = e => {
-    if (!_cropDrag) return;
-    const r = canvas.getBoundingClientRect();
-    const mx = Math.max(0,Math.min(1,(e.clientX-r.left)/cW));
-    const my = Math.max(0,Math.min(1,(e.clientY-r.top)/cH));
-    if (_cropDrag.type==='new') {
-      const x = Math.min(mx,_cropDrag.ox), y = Math.min(my,_cropDrag.oy);
-      const w = Math.abs(mx-_cropDrag.ox), h = Math.abs(my-_cropDrag.oy);
-      _cropSel = {x,y,w:Math.max(w,0.01),h:Math.max(h,0.01)};
-    } else if (_cropDrag.type==='move') {
-      const dx = mx-_cropDrag.ox, dy = my-_cropDrag.oy;
-      _cropSel.x = Math.max(0,Math.min(1-_cropDrag.sel.w,_cropDrag.sel.x+dx));
-      _cropSel.y = Math.max(0,Math.min(1-_cropDrag.sel.h,_cropDrag.sel.y+dy));
-    } else if (_cropDrag.type==='corner') {
-      const s = _cropDrag.sel, k = _cropDrag.key;
-      const dx = mx-_cropDrag.ox, dy = my-_cropDrag.oy;
-      if(k==='tl'){_cropSel.x=Math.max(0,s.x+dx);_cropSel.y=Math.max(0,s.y+dy);_cropSel.w=Math.max(0.01,s.w-dx);_cropSel.h=Math.max(0.01,s.h-dy);}
-      if(k==='tr'){_cropSel.y=Math.max(0,s.y+dy);_cropSel.w=Math.max(0.01,s.w+dx);_cropSel.h=Math.max(0.01,s.h-dy);}
-      if(k==='bl'){_cropSel.x=Math.max(0,s.x+dx);_cropSel.w=Math.max(0.01,s.w-dx);_cropSel.h=Math.max(0.01,s.h+dy);}
-      if(k==='br'){_cropSel.w=Math.max(0.01,s.w+dx);_cropSel.h=Math.max(0.01,s.h+dy);}
-    }
-    renderCropCanvas();
-  };
-  canvas.onmouseup = () => { _cropDrag = null; };
-}
-
-function applyCrop() {
-  const s = getSelScreen(); if (!s || !_cropImg) return;
-  const iw = _cropImg.naturalWidth, ih = _cropImg.naturalHeight;
-  const out = document.createElement('canvas');
-  out.width  = Math.max(1, Math.round(_cropSel.w * iw));
-  out.height = Math.max(1, Math.round(_cropSel.h * ih));
-  out.getContext('2d').drawImage(_cropImg,
-    _cropSel.x*iw, _cropSel.y*ih, _cropSel.w*iw, _cropSel.h*ih,
-    0, 0, out.width, out.height);
-  s.imageSrc = out.toDataURL('image/jpeg', 0.9);
-  showCanvas(s.imageSrc); renderSidebar(); renderHotspots(); markDirty();
-  closeCropModal();
-}
-
-function applyResize() {
-  const s = getSelScreen(); if (!s || !_cropImg) return;
-  const w = parseInt(document.getElementById('resizeW').value)||_cropImg.naturalWidth;
-  const h = parseInt(document.getElementById('resizeH').value)||_cropImg.naturalHeight;
-  const out = document.createElement('canvas');
-  out.width = w; out.height = h;
-  out.getContext('2d').drawImage(_cropImg, 0, 0, w, h);
-  s.imageSrc = out.toDataURL('image/jpeg', 0.9);
-  showCanvas(s.imageSrc); renderSidebar(); renderHotspots(); markDirty();
-  closeCropModal();
-}
-
-document.getElementById('cropZoomSlider').addEventListener('input', function() {
-  _cropZoom = parseFloat(this.value); renderCropCanvas();
-});
-
-// パターン名インライン編集：入力フィールド外クリックで確定・解除
-document.addEventListener('mousedown', function(e) {
-  if (!_editingPatId) return;
-  const inp = document.querySelector('.psb-name-edit');
-  if (!inp) return;
-  if (!inp.contains(e.target)) {
-    inp.blur();  // onblur → commitPatName が呼ばれる
-  }
-});
-
-// =====================================================
-// HOTSPOT DRAWING
-// =====================================================
-const canvasCont = document.getElementById('canvasCont');
-const drawRect   = document.getElementById('drawRect');
-const canvasImg  = document.getElementById('canvasImg');
-
-canvasCont.addEventListener('mousedown', e => {
-  const s = getSelScreen(); if (!s || !s.imageSrc) return;
-  if (!e.target.matches('#canvasImg,#hsOverlay,.hs-overlay')) return;
-  isDrawing = true;
-  const r = canvasImg.getBoundingClientRect();
-  drawStart = { rx:(e.clientX-r.left)/r.width, ry:(e.clientY-r.top)/r.height, px:e.clientX-r.left, py:e.clientY-r.top };
-  drawRect.style.cssText = `display:block;left:${drawStart.px}px;top:${drawStart.py}px;width:0;height:0;`;
-  e.preventDefault();
-});
-document.addEventListener('mousemove', e => {
-  if (!isDrawing) return;
-  const r = canvasImg.getBoundingClientRect();
-  const cx = e.clientX-r.left, cy = e.clientY-r.top;
-  drawRect.style.left   = Math.min(drawStart.px,cx)+'px';
-  drawRect.style.top    = Math.min(drawStart.py,cy)+'px';
-  drawRect.style.width  = Math.abs(cx-drawStart.px)+'px';
-  drawRect.style.height = Math.abs(cy-drawStart.py)+'px';
-});
-document.addEventListener('mouseup', e => {
-  if (!isDrawing) return; isDrawing = false; drawRect.style.display = 'none';
-  const r = canvasImg.getBoundingClientRect();
-  const ex=(e.clientX-r.left)/r.width, ey=(e.clientY-r.top)/r.height;
-  const x1=Math.min(drawStart.rx,ex), y1=Math.min(drawStart.ry,ey);
-  const w=Math.abs(ex-drawStart.rx), h=Math.abs(ey-drawStart.ry);
-  drawStart = null;
-  if (w<0.01||h<0.01) return;
-  const s = getSelScreen(); if (!s) return;
-  s.hotspots.push({id:genId(),x:x1,y:y1,w,h,targetId:'',targetType:'screen',note:''});
-  renderHotspots(); renderHsPanel(s); renderSidebar(); markDirty();
-});
-
-function renderHotspots() {
-  const overlay = document.getElementById('hsOverlay'); overlay.innerHTML = '';
-  const s = getSelScreen(); if (!s) return;
-  const screens = getScreens();
-  s.hotspots.forEach((hs, i) => {
-    const el = document.createElement('div');
-    el.className = 'hs-rect';
-    el.style.cssText = `left:${hs.x*100}%;top:${hs.y*100}%;width:${hs.w*100}%;height:${hs.h*100}%;`;
-    let lbl;
-    if (hs.targetType === 'mail' && hs.targetId) {
-      lbl = '✉️ メール';
-    } else {
-      const ti = screens.findIndex(x => x.id === hs.targetId);
-      lbl = ti>=0 ? `→SCR-${String(ti+1).padStart(2,'0')}` : '?';
-    }
-    el.innerHTML = `<span class="hs-lbl">${lbl}</span><button class="hs-del" onclick="deleteHotspot('${s.id}','${hs.id}',event)">×</button>`;
-    overlay.appendChild(el);
-  });
-}
-
-function deleteHotspot(sId, hId, e) {
-  e.stopPropagation();
-  const s = getScreens().find(x => x.id === sId); if (!s) return;
-  s.hotspots = s.hotspots.filter(h => h.id !== hId);
-  renderHotspots(); renderHsPanel(s); renderSidebar(); markDirty();
-}
-
-function _loadMailTemplates() {
-  try { const s = localStorage.getItem('mailTemplates'); return s ? JSON.parse(s) : []; } catch(e) { return []; }
-}
-
-function renderHsPanel(screen) {
-  const list = document.getElementById('hsList'), empty = document.getElementById('hsEmpty');
-  list.innerHTML = '';
-  if (!screen || !screen.hotspots.length) { empty.style.display = 'block'; return; }
-  empty.style.display = 'none';
-  const screens = getScreens();
-  const mailTemplates = _loadMailTemplates();
-  screen.hotspots.forEach((hs, i) => {
-    const isMail = hs.targetType === 'mail';
-    // 画面選択肢
-    const screenOpts = screens.filter(x=>x.id!==screen.id).map(x => {
-      const ti = screens.findIndex(y=>y.id===x.id);
-      return `<option value="${x.id}"${(!isMail && hs.targetId===x.id)?' selected':''}>SCR-${String(ti+1).padStart(2,'0')} ${esc(x.name)}</option>`;
-    }).join('');
-    // メール選択肢（カテゴリ付き）
-    const mailOpts = mailTemplates.map(t =>
-      `<option value="${t.id}"${(isMail && hs.targetId===t.id)?' selected':''}>${esc(t.category?t.category+' / ':'')}${esc(t.title||t.id)}</option>`
-    ).join('');
-    const el = document.createElement('div'); el.className = 'hs-item';
-    el.innerHTML = `
-      <div class="hs-item-hd">
-        <span class="hs-id">HS-${String(i+1).padStart(2,'0')}</span>
-        <button class="hs-del-btn" onclick="deleteHotspot('${screen.id}','${hs.id}',event)">✕</button>
-      </div>
-      <div style="display:flex;gap:4px;margin-bottom:4px;">
-        <button onclick="updateHotspot('${screen.id}','${hs.id}','type','screen')" style="flex:1;height:24px;font-size:10px;border-radius:4px;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:${!isMail?'var(--accent)':'var(--surface2)'};color:${!isMail?'#fff':'var(--text)'};font-weight:${!isMail?'700':'400'};">🖥 画面</button>
-        <button onclick="updateHotspot('${screen.id}','${hs.id}','type','mail')"   style="flex:1;height:24px;font-size:10px;border-radius:4px;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:${isMail?'var(--accent)':'var(--surface2)'};color:${isMail?'#fff':'var(--text)'};font-weight:${isMail?'700':'400'};">✉️ メール</button>
-      </div>
-      <select class="hs-select" onchange="updateHotspot('${screen.id}','${hs.id}','target',this.value)" style="display:${!isMail?'block':'none'}">
-        <option value="">— 画面を選択 —</option>${screenOpts}
-      </select>
-      <select class="hs-select" onchange="updateHotspot('${screen.id}','${hs.id}','target',this.value)" style="display:${isMail?'block':'none'}">
-        <option value="">— メールテンプレートを選択 —</option>${mailOpts}
-      </select>
-      <textarea class="hs-note" placeholder="メモ" onchange="updateHotspot('${screen.id}','${hs.id}','note',this.value)">${esc(hs.note)}</textarea>`;
-    list.appendChild(el);
-  });
-}
-
-function updateHotspot(sId, hId, field, val) {
-  const s = getScreens().find(x=>x.id===sId); if (!s) return;
-  const hs = s.hotspots.find(h=>h.id===hId); if (!hs) return;
-  if (field==='target') { hs.targetId = val; }
-  if (field==='note')   { hs.note = val; }
-  if (field==='type')   { hs.targetType = val; hs.targetId = ''; }
-  renderHotspots(); renderHsPanel(s); renderSidebar(); markDirty();
-}
-
-// =====================================================
-// FLOW
-// =====================================================
+// ============================================================
+// FLOW TAB（フロー図タブ）
+// 選択中パターンの画面をサムネイル → で横並び表示
+// クリックするとその画面からプレビューを開始する
+// ============================================================
 function renderFlow() {
-  const row = document.getElementById('flowRow');
+  const container = document.getElementById('flowThumbRow');
+  if (!container) return;
+
   const screens = getScreens();
-  row.innerHTML = '';
+  const pat     = getPat();
+
   if (!currentPatId || !screens.length) {
-    row.innerHTML = '<div class="flow-empty"><span style="font-size:36px">📭</span><span>パターンを選択し、編集モードで画面を追加してください</span></div>';
+    const msg = !currentPatId
+      ? '左のサイドバーからパターンを選択してください'
+      : 'このパターンに画面がありません';
+    container.innerHTML = `<div class="flow-empty"><span style="font-size:36px">📭</span><span>${msg}</span></div>`;
     return;
   }
-  const mailTemplatesFlow = _loadMailTemplates();
+
+  let html = `<div class="flow-pat-label">📂 ${esc(pat.name)}</div><div class="flow-thumb-row">`;
   screens.forEach((s, i) => {
-    const card = document.createElement('div'); card.className = 'flow-card';
-    const trans = s.hotspots.filter(h=>h.targetId).map(h => {
-      if (h.targetType === 'mail') {
-        const mt = mailTemplatesFlow.find(x=>x.id===h.targetId);
-        return `<div class="flow-trans"><span style="color:#e67e22">✉️</span> ${esc(mt?.title||'メール')}</div>`;
-      }
-      const ti = screens.findIndex(x=>x.id===h.targetId);
-      const tn = screens.find(x=>x.id===h.targetId);
-      return `<div class="flow-trans"><span style="color:var(--accent)">→</span> SCR-${String(ti+1).padStart(2,'0')} ${esc(tn?.name||'?')}</div>`;
-    }).join('');
-    card.innerHTML = `
-      <div class="flow-thumb">${s.imageSrc?`<img src="${s.imageSrc}">`:'🖼️'}</div>
-      <div class="flow-body">
-        <div class="flow-num">SCR-${String(i+1).padStart(2,'0')}</div>
-        <div class="flow-name">${esc(s.name)}</div>
-        ${s.note?`<div style="font-size:8px;color:var(--text3);margin-bottom:2px;">${esc(s.note.substring(0,50))}${s.note.length>50?'…':''}</div>`:''}
-        ${trans||'<div style="font-size:9px;color:var(--text4);">遷移未設定</div>'}
+    const isActive = s.id === pvCurrentId;
+    const thumbHtml = s.imageSrc
+      ? `<img src="${s.imageSrc}" alt="${esc(s.name)}">`
+      : '<span style="font-size:22px">🖼️</span>';
+    html += `
+      <div class="flow-thumb-card ${isActive ? 'active' : ''}"
+           onclick="startPreviewFrom('${s.id}')"
+           title="クリックでこの画面からプレビュー開始">
+        <div class="flow-thumb-img">${thumbHtml}</div>
+        <div class="flow-thumb-footer">
+          <div class="flow-thumb-num">SCR-${String(i+1).padStart(2,'0')}</div>
+          <div class="flow-thumb-name">${esc(s.name)}</div>
+        </div>
       </div>`;
-    row.appendChild(card);
-    if (i < screens.length-1) {
-      const arr = document.createElement('div'); arr.className = 'flow-arrow';
-      arr.innerHTML = `<svg width="28" height="14" viewBox="0 0 28 14"><line x1="0" y1="7" x2="22" y2="7" stroke="#d1d5db" stroke-width="1.5"/><polyline points="16,3 23,7 16,11" fill="none" stroke="#d1d5db" stroke-width="1.5"/></svg>`;
-      row.appendChild(arr);
+    // 画面間に矢印を表示する
+    if (i < screens.length - 1) {
+      html += `<div class="flow-thumb-arrow">→</div>`;
     }
   });
+  html += '</div>';
+  container.innerHTML = html;
 }
 
-// =====================================================
-// PREVIEW
-// =====================================================
-function renderPvList() {
-  const list = document.getElementById('pvList');
-  const screens = getScreens();
-  list.innerHTML = '';
-  screens.forEach((s, i) => {
-    const el = document.createElement('div');
-    el.className = 'pv-item' + (s.id===pvCurrentId?' active':'');
-    el.onclick = () => navigatePv(s.id, true);
-    el.innerHTML = `
-      <div class="pv-thumb">${s.imageSrc?`<img src="${s.imageSrc}">`:'🖼️'}</div>
-      <div>
-        <div class="pv-num">SCR-${String(i+1).padStart(2,'00')}</div>
-        <div class="pv-name">${esc(s.name)}</div>
-      </div>`;
-    list.appendChild(el);
-  });
+// ============================================================
+// PREVIEW（プレビュー機能）
+// ============================================================
+
+/**
+ * 指定した画面からプレビューを開始する（フロー図サムネイルクリック時）。
+ * プレビュータブへ切り替えて遷移履歴をリセットする。
+ */
+function startPreviewFrom(screenId) {
+  pvCurrentId = screenId;
+  pvHistory   = [screenId];
+  switchTab('preview');
+  const s = getScreen(screenId);
+  if (s) {
+    renderPvCanvas(s);
+    renderPvHist();
+  }
+  renderSidebar();
+  updateStartFab();
 }
 
+/**
+ * ホットスポットクリックで次の画面へ遷移する。
+ * @param {string}  id    - 遷移先画面ID
+ * @param {boolean} reset - true: 履歴リセット（最初から）
+ */
 function navigatePv(id, reset) {
-  const s = getScreen(id); if (!s) return;
+  const s = getScreen(id);
+  if (!s) return;
   pvCurrentId = id;
-  if (reset) pvHistory = [id]; else { pvHistory.push(id); flashTransition(); }
-  renderPvList(); renderPvCanvas(s); renderPvHist();
+  if (reset) {
+    pvHistory = [id];
+  } else {
+    pvHistory.push(id);
+    flashTransition();
+  }
+  renderPvCanvas(s);
+  renderPvHist();
+  renderSidebar();  // サイドバーのアクティブ状態も更新
+  updateStartFab();
 }
 
+/**
+ * プレビューキャンバスに画像とホットスポットを描画する。
+ */
 function renderPvCanvas(screen) {
   const wrap = document.getElementById('pvCanvasWrap');
+  if (!wrap) return;
+
   const screens = getScreens();
-  const idx = screens.findIndex(s=>s.id===screen.id);
-  document.getElementById('pvTitle').textContent = screen.name;
-  document.getElementById('pvBadge').textContent = `SCR-${String(idx+1).padStart(2,'00')}`;
+  const idx     = screens.findIndex(s => s.id === screen.id);
+  const pvTitle = document.getElementById('pvTitle');
+  const pvBadge = document.getElementById('pvBadge');
+  if (pvTitle) pvTitle.textContent = screen.name;
+  if (pvBadge) pvBadge.textContent = `SCR-${String(idx+1).padStart(2,'0')}`;
+
   if (!screen.imageSrc) {
-    wrap.innerHTML = `<div style="color:var(--text4);padding:40px;font-size:12px;text-align:center;width:100%;"><div style="font-size:36px;margin-bottom:10px">🖼️</div>画像が登録されていません</div>`;
+    wrap.innerHTML = `<div style="color:var(--text4);padding:40px;font-size:12px;text-align:center;width:100%;">
+      <div style="font-size:36px;margin-bottom:10px">🖼️</div>画像が登録されていません</div>`;
     return;
   }
-  const canvas = document.createElement('div'); canvas.className = 'pv-canvas';
-  const img = document.createElement('img'); img.src = screen.imageSrc; img.alt = screen.name;
+
+  const canvas    = document.createElement('div');
+  canvas.className = 'pv-canvas';
+  const img = document.createElement('img');
+  img.src   = screen.imageSrc;
+  img.alt   = screen.name;
   canvas.appendChild(img);
-  const mailTemplatesPv = _loadMailTemplates();
-  screen.hotspots.filter(h=>h.targetId).forEach(hs => {
-    const el = document.createElement('div'); el.className = 'pv-hs';
+
+  // ホットスポットオーバーレイを生成する
+  const mailTemplates = _loadMailTemplates();
+  (screen.hotspots || []).filter(h => h.targetId).forEach(hs => {
+    const el = document.createElement('div');
+    el.className = 'pv-hs';
     el.style.cssText = `left:${hs.x*100}%;top:${hs.y*100}%;width:${hs.w*100}%;height:${hs.h*100}%;`;
+
     if (hs.targetType === 'mail') {
-      const mt = mailTemplatesPv.find(x=>x.id===hs.targetId);
-      const tip = (hs.note?hs.note+'\n':'') + `✉️ ${mt?.title||'メール'}`;
-      el.innerHTML = `<div class="pv-tooltip">${esc(tip)}</div>`;
+      // メールテンプレートへのホットスポット
+      const mt  = mailTemplates.find(x => x.id === hs.targetId);
+      const tip = (hs.note ? hs.note + '\n' : '') + `✉️ ${mt?.title || 'メール'}`;
+      el.innerHTML       = `<div class="pv-tooltip">${esc(tip)}</div>`;
       el.style.borderColor = '#e67e22';
-      el.style.background = 'rgba(230,126,34,.15)';
+      el.style.background  = 'rgba(230,126,34,.15)';
       el.onclick = () => {
-        const mailTab = window.open('mail.html#' + hs.targetId, 'mailTab');
-        if (mailTab) mailTab.focus();
+        const tab = window.open('mail.html#' + hs.targetId, 'mailTab');
+        if (tab) tab.focus();
       };
     } else {
-      const t = screens.find(s=>s.id===hs.targetId); if (!t) return;
-      const ti = screens.findIndex(s=>s.id===hs.targetId);
-      const tip = (hs.note?hs.note+'\n':'') + `→ SCR-${String(ti+1).padStart(2,'00')} ${t.name}`;
+      // 別画面へのホットスポット
+      const t  = screens.find(s => s.id === hs.targetId);
+      if (!t) return;
+      const ti  = screens.findIndex(s => s.id === hs.targetId);
+      const tip = (hs.note ? hs.note + '\n' : '') + `→ SCR-${String(ti+1).padStart(2,'0')} ${t.name}`;
       el.innerHTML = `<div class="pv-tooltip">${esc(tip)}</div>`;
-      el.onclick = () => navigatePv(hs.targetId, false);
+      el.onclick   = () => navigatePv(hs.targetId, false);
     }
     canvas.appendChild(el);
   });
-  wrap.innerHTML = ''; wrap.appendChild(canvas);
+
+  wrap.innerHTML = '';
+  wrap.appendChild(canvas);
 }
 
+/**
+ * 遷移履歴カードリストを描画する。
+ * カードをクリックするとその位置（インデックス）に戻れる。
+ */
 function renderPvHist() {
-  const list = document.getElementById('pvHist');
+  const list    = document.getElementById('pvHist');
+  if (!list) return;
   const screens = getScreens();
-  list.innerHTML = '';
-  pvHistory.forEach((id, i) => {
-    const s = screens.find(x=>x.id===id); if (!s) return;
-    const si = screens.findIndex(x=>x.id===id);
-    const el = document.createElement('div');
-    el.className = 'hist-item' + (i===pvHistory.length-1?' current':'');
-    el.innerHTML = `<div class="hist-dot"></div><span>SCR-${String(si+1).padStart(2,'0')} ${esc(s.name)}</span>`;
-    list.appendChild(el);
-  });
+
+  list.innerHTML = pvHistory.map((id, i) => {
+    const s  = screens.find(x => x.id === id);
+    if (!s) return '';
+    const si        = screens.findIndex(x => x.id === id);
+    const isCurrent = (i === pvHistory.length - 1);
+    const thumbHtml = s.imageSrc
+      ? `<img src="${s.imageSrc}" alt="${esc(s.name)}">`
+      : '🖼️';
+    return `
+      <div class="pv-hist-card ${isCurrent ? 'current' : ''}"
+           onclick="jumpToHistory(${i})"
+           title="${isCurrent ? '現在の画面' : 'クリックでこの画面に戻る'}">
+        <div class="pv-hist-thumb">${thumbHtml}</div>
+        <div class="pv-hist-info">
+          <div class="pv-hist-num">SCR-${String(si+1).padStart(2,'0')}</div>
+          <div class="pv-hist-name">${esc(s.name)}</div>
+        </div>
+        ${isCurrent ? '<div class="pv-hist-current-dot"></div>' : ''}
+      </div>`;
+  }).join('');
+
+  // 最新（現在）のカードが見えるようスクロールする
   list.scrollTop = list.scrollHeight;
 }
 
-function resetPvHistory() {
-  if (pvHistory.length) navigatePv(pvHistory[0], true);
+/**
+ * 履歴カードをクリックして指定インデックスの画面に戻る。
+ * それ以降の履歴は切り捨てる。
+ */
+function jumpToHistory(index) {
+  pvHistory   = pvHistory.slice(0, index + 1);
+  pvCurrentId = pvHistory[pvHistory.length - 1];
+  const s     = getScreen(pvCurrentId);
+  if (s) {
+    renderPvCanvas(s);
+    renderPvHist();
+    renderSidebar();
+    updateStartFab();
+  }
 }
 
+/**
+ * 「最初から」：最初の画面（pvHistory[0]）に戻る。
+ * index.html の「現在のステップへ」FAB と同じパターンで実装。
+ * pvHistory.length > 1 のとき FAB が表示される。
+ */
+function resetToStart() {
+  if (pvHistory.length > 0) {
+    navigatePv(pvHistory[0], true);
+  }
+}
+
+/**
+ * 「最初から」FABの表示/非表示を更新する。
+ * pvHistory.length > 1（最初の画面から離れている）ときに表示する。
+ */
+function updateStartFab() {
+  const fab = document.getElementById('pvStartFab');
+  if (fab) fab.style.display = pvHistory.length > 1 ? 'flex' : 'none';
+}
+
+/** プレビューキャンバスを空表示にする */
+function _pvClearCanvas() {
+  const wrap    = document.getElementById('pvCanvasWrap');
+  const pvTitle = document.getElementById('pvTitle');
+  const pvBadge = document.getElementById('pvBadge');
+  if (wrap) wrap.innerHTML = `
+    <div style="color:var(--text4);padding:40px;font-size:12px;text-align:center;width:100%;">
+      <div style="font-size:36px;margin-bottom:10px">🖼️</div>
+      フロー図のサムネイルをクリックしてプレビューを開始してください
+    </div>`;
+  if (pvTitle) pvTitle.textContent = '';
+  if (pvBadge) pvBadge.textContent = '';
+}
+
+// ============================================================
+// 画面遷移時フラッシュ演出
+// ============================================================
 function flashTransition() {
   const o = document.getElementById('flashOverlay');
-  o.classList.add('flash'); setTimeout(()=>o.classList.remove('flash'),120);
+  if (!o) return;
+  o.classList.remove('flash');
+  void o.offsetWidth;  // reflow でアニメーションをリセット
+  o.classList.add('flash');
+  setTimeout(() => o.classList.remove('flash'), 180);
 }
 
-// =====================================================
-// TAB / SIDEBAR
-// =====================================================
-function setSidebarVisible(show) {
-  document.getElementById('sidebar').classList.toggle('show', show);
-}
-
+// ============================================================
+// タブ切り替え
+// ============================================================
 function switchTab(tab) {
-  ['Flow','Preview'].forEach(t => {
-    document.getElementById('tabBtn'+t).classList.toggle('active', t.toLowerCase()===tab);
-    document.getElementById('tab'+t).classList.toggle('active', t.toLowerCase()===tab);
+  ['Flow', 'Preview'].forEach(t => {
+    const btn   = document.getElementById('tabBtn' + t);
+    const panel = document.getElementById('tab' + t);
+    if (btn)   btn.classList.toggle('active',   t.toLowerCase() === tab);
+    if (panel) panel.classList.toggle('active', t.toLowerCase() === tab);
   });
-  // プレビューでは画面一覧サイドバーも表示（256px）
-  const sidebar = document.getElementById('sidebar');
-  if (sidebar) sidebar.classList.toggle('show', tab === 'preview');
-  if (tab==='flow') renderFlow();
-  if (tab==='preview') {
-    renderPvList();
+
+  // フロー図タブ時は遷移履歴サイドバーを非表示
+  const histSidebar = document.querySelector('.pv-hist-sidebar');
+  if (histSidebar) {
+    histSidebar.style.display = (tab === 'preview') ? '' : 'none';
+  }
+
+  if (tab === 'flow') {
+    renderFlow();
+  }
+
+  if (tab === 'preview') {
     const screens = getScreens();
-    if (!pvCurrentId && screens.length) navigatePv(screens[0].id, true);
-    else if (pvCurrentId) {
-      const s=getScreen(pvCurrentId);
-      if(s) renderPvCanvas(s);
-      else {
-        pvCurrentId = null; pvHistory = [];
-        document.getElementById('pvCanvasWrap').innerHTML = '<div style="color:var(--text4);padding:40px;font-size:12px;text-align:center;width:100%;"><div style="font-size:36px;margin-bottom:10px">🖼️</div>画面が登録されていません</div>';
-        document.getElementById('pvTitle').textContent = '';
-        document.getElementById('pvBadge').textContent = '';
-      }
-    }
-    else {
-      document.getElementById('pvCanvasWrap').innerHTML = '<div style="color:var(--text4);padding:40px;font-size:12px;text-align:center;width:100%;"><div style="font-size:36px;margin-bottom:10px">🖼️</div>画面が登録されていません</div>';
-      document.getElementById('pvTitle').textContent = '';
-      document.getElementById('pvBadge').textContent = '';
+    if (!pvCurrentId && screens.length) {
+      startPreviewFrom(screens[0].id);
+    } else if (!pvCurrentId) {
+      _pvClearCanvas();
     }
   }
 }
 
-
-// =====================================================
-// INIT
-// =====================================================
-(function() {
+// ============================================================
+// 初期化
+// ============================================================
+(function init() {
+  // 1. HTML 埋め込みデータを読み込む（管理者がサーバー経由でデプロイする場合）
   try {
-    const el = document.getElementById('sft-data');
+    const el       = document.getElementById('sft-data');
     const embedded = el ? JSON.parse(el.textContent.trim()) : [];
     if (embedded && embedded.length) {
-      // 新形式（patterns配列）か旧形式（screens配列）か判定
-      if (embedded[0] && embedded[0].screens !== undefined) {
-        patterns = embedded;
-      } else if (embedded[0] && embedded[0].hotspots !== undefined) {
-        patterns = [{ id: genId(), name: 'デフォルト', screens: embedded }];
-      }
+      if      (embedded[0] && embedded[0].screens !== undefined)  patterns = embedded;
+      else if (embedded[0] && embedded[0].hotspots !== undefined) patterns = [{ id: genId(), name: 'デフォルト', screens: embedded }];
     }
   } catch(e) {}
 
+  // 2. 埋め込みデータがない場合は localStorage から読み込む
   if (!patterns.length) {
     try {
       const ls = JSON.parse(localStorage.getItem('screenFlowData') || '[]');
       if (ls && ls.length) {
-        if (ls[0].screens !== undefined) patterns = ls;
+        if      (ls[0].screens  !== undefined) patterns = ls;
         else if (ls[0].hotspots !== undefined) patterns = [{ id: genId(), name: 'デフォルト', screens: ls }];
       }
     } catch(e) {}
   }
 
+  // 3. データがない場合は空のデフォルトパターンを生成する
   if (!patterns.length) patterns = [{ id: genId(), name: 'パターン1', screens: [] }];
+
+  // 先頭パターンを選択状態にする
   currentPatId = patterns[0].id;
 
-  renderPatSelect();
-  renderPatMgr();
   renderSidebar();
-  switchTab('flow');
-  const p = getPat();
-  document.getElementById('flowPatLbl').textContent = p ? '— ' + p.name : '';
+  renderFlow();
+  updateFlowPatLabel();
+  updateStartFab();
+  // 初期表示はフロー図タブなので遷移履歴サイドバーを非表示
+  (function() {
+    const hist = document.querySelector('.pv-hist-sidebar');
+    if (hist) hist.style.display = 'none';
+  })();
 })();
-</script></body></html>
+</script>
+</body>
+</html>
