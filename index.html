@@ -2,17 +2,21 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>GitHub Downloader</title>
+  <title>固定リポジトリ ZIP Downloader</title>
+
+  <!-- ライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h1>GitHub ファイルダウンローダー</h1>
+<h1>リポジトリZIPダウンロード</h1>
 
-<input type="text" id="repoUrl" placeholder="https://github.com/user/repo">
-<button onclick="loadRepo()">読み込み</button>
+<button onclick="downloadZip()">ダウンロード</button>
 
-<ul id="fileList"></ul>
+<p id="status"></p>
 
 <script src="script.js"></script>
 </body>
