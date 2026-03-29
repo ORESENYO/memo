@@ -1,48 +1,47 @@
-async function loadRepo() {
-  const url = document.getElementById("repoUrl").value;
-  const parts = url.split("/");
-  const user = parts[3];
-  const repo = parts[4];
+// ★ここを書き換えるだけ
+const USER = "ORESENYO";
+const REPO = "memo";
+const BRANCH = "main"; // 必要なら master に変更
 
-  const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents`;
+async function downloadZip() {
+  const status = document.getElementById("status");
 
-  const list = document.getElementById("fileList");
-  list.innerHTML = "読み込み中...";
+  const zip = new JSZip();
+
+  status.textContent = "取得中...";
 
   try {
-    const res = await fetch(apiUrl);
-    const data = await res.json();
+    await fetchAllFiles(USER, REPO, "", zip);
 
-    list.innerHTML = "";
-    renderFiles(data, list);
+    status.textContent = "ZIP生成中...";
+
+    const content = await zip.generateAsync({ type: "blob" });
+
+    saveAs(content, `${REPO}.zip`);
+
+    status.textContent = "完了！";
 
   } catch (e) {
-    list.innerHTML = "取得失敗";
+    console.error(e);
+    status.textContent = "エラー発生";
   }
 }
 
-function renderFiles(files, parent) {
-  files.forEach(file => {
-    const li = document.createElement("li");
+async function fetchAllFiles(user, repo, path, zip) {
+  const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/${path}?ref=${BRANCH}`;
 
+  const res = await fetch(apiUrl);
+  const data = await res.json();
+
+  for (const file of data) {
     if (file.type === "file") {
-      const link = document.createElement("a");
-      link.href = file.download_url;
-      link.textContent = "📄 " + file.name;
-      link.download = file.name;
-      li.appendChild(link);
+      const fileData = await fetch(file.download_url);
+      const blob = await fileData.blob();
+
+      zip.file(file.path, blob);
 
     } else if (file.type === "dir") {
-      li.textContent = "📁 " + file.name;
-
-      const ul = document.createElement("ul");
-      li.appendChild(ul);
-
-      fetch(file.url)
-        .then(res => res.json())
-        .then(data => renderFiles(data, ul));
+      await fetchAllFiles(user, repo, file.path, zip);
     }
-
-    parent.appendChild(li);
-  });
+  }
 }
