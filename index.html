@@ -2,22 +2,35 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>固定リポジトリ ZIP Downloader</title>
+  <title>ZIPダウンロード</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 40px;
+      text-align: center;
+    }
 
-  <!-- ライブラリ -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
-  <link rel="stylesheet" href="style.css">
+    button {
+      padding: 12px 20px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
 
-<h1>リポジトリZIPダウンロード</h1>
+<h1>リポジトリダウンロード</h1>
 
-<button onclick="downloadZip()">ダウンロード</button>
+<button onclick="downloadZip()">ZIPダウンロード</button>
 
-<p id="status"></p>
+<script>
+  function downloadZip() {
+    // ★ここを書き換えるだけ
+    const url = "https://github.com/ORESENYO/memo/archive/refs/heads/main.zip";
 
-<script src="script.js"></script>
+    window.location.href = url;
+  }
+</script>
+
 </body>
 </html>
